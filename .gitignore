@@ -1,0 +1,43 @@
+# 시크릿 — 보안 불변식 6. 절대 커밋 금지.
+.env.local
+.env*.local
+
+# 의존성
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js 빌드 산출물
+/.next/
+/out/
+/build
+next-env.d.ts
+
+# 테스트/커버리지
+/coverage
+
+# 런타임 데이터 — 검색 색인과 썸네일 캐시는 재생성 가능하므로 추적하지 않는다.
+/.cache/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# 로그
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# macOS
+.DS_Store
+*.pem
+
+# 에디터
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Vercel / 타입스크립트
+.vercel
+*.tsbuildinfo
