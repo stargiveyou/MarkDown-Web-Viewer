@@ -1,4 +1,4 @@
-# 프로젝트 기획·개발 문서 — Mac Mini MD Workspace (v1.0 Final)
+# 프로젝트 기획·개발 문서 — Husky Works MDs (v1.0 Final)
 
 > 기준: `MacMini_MD_Workspace_Plan_v3_3.md` / `v4.0_Final.md` + 사용자 확정 요구사항 8개 + 결정 D1~D6.
 > 상태: **전 항목 확정 (단일 기준 문서)**. 저장소=로컬 디스크 통합, 업로드=웹→디스크 직접 저장(FTP 미사용),

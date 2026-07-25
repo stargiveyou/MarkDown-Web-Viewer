@@ -136,7 +136,7 @@ function ViewerPageInner() {
               title="다운로드"
             >
               <Download className="h-3.5 w-3.5" />
-              다운로드
+              <span className="hidden sm:inline">다운로드</span>
             </button>
             <button
               type="button"
@@ -145,7 +145,7 @@ function ViewerPageInner() {
               title="공유하기"
             >
               <Share2 className="h-3.5 w-3.5" />
-              공유
+              <span className="hidden sm:inline">공유</span>
             </button>
             <button
               type="button"
@@ -153,7 +153,7 @@ function ViewerPageInner() {
               className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
               <Pencil className="h-3.5 w-3.5" />
-              편집
+              <span className="hidden sm:inline">편집</span>
             </button>
           </div>
         </div>

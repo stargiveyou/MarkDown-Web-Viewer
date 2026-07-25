@@ -200,12 +200,12 @@ function WorkspacePageInner() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <h1 className="shrink-0 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            MD Workspace
+            Husky Works MDs
           </h1>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* 검색 바 */}
             <SearchBar onResults={handleSearchResults} onClear={handleSearchClear} />
 
