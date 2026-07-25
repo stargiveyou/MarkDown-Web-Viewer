@@ -1,6 +1,6 @@
 # MarkDown Web Viewer
 
-Mac Mini 로컬 디스크에 저장된 마크다운 파일과 미디어를 웹에서 업로드, 조회, 편집, 검색, 공유할 수 있는 워크스페이스 앱.
+로컬 머신의 디스크에 저장된 마크다운 파일과 미디어를 웹에서 업로드, 조회, 편집, 검색, 공유할 수 있는 워크스페이스 앱.
 
 ## Tech Stack
 
@@ -27,7 +27,7 @@ Mac Mini 로컬 디스크에 저장된 마크다운 파일과 미디어를 웹�
 ## Architecture
 
 ```
-Browser --> ngrok Edge (TLS) --> Next.js :3000 (Mac Mini)
+Browser --> ngrok Edge (TLS) --> Next.js :3000 (Local Machine)
                                    ├── ~/MarkdownDocs    (단일 저장소, fs 직접 R/W)
                                    ├── SQLite FTS5       (trigram 검색 색인)
                                    ├── .thumbcache/      (썸네일 캐시)
@@ -39,7 +39,7 @@ Browser --> ngrok Edge (TLS) --> Next.js :3000 (Mac Mini)
 ### Prerequisites
 
 - Node.js 20.9.0+
-- macOS (Mac Mini 상주 권장)
+- 상주 실행 가능한 로컬 머신 (macOS / Linux / Windows — 크로스 플랫폼)
 
 ### Installation
 

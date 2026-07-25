@@ -52,7 +52,7 @@ export function buildDiscordPayload(payload: WebhookPayload): object {
         color: 0x5865f2, // Discord 브랜드 블루퍼플
         timestamp: new Date(payload.mtime).toISOString(),
         footer: {
-          text: 'MD Workspace',
+          text: 'Husky Works MDs',
         },
       },
     ],
@@ -78,7 +78,7 @@ export function buildSlackPayload(payload: WebhookPayload): object {
         elements: [
           {
             type: 'mrkdwn',
-            text: ':memo: MD Workspace',
+            text: ':memo: Husky Works MDs',
           },
         ],
       },

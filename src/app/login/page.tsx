@@ -87,7 +87,7 @@ function LoginForm() {
       className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
     >
       <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-        MD Workspace
+        Husky Works MDs
       </h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
         계속하려면 패스워드를 입력하세요.

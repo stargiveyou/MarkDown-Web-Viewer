@@ -207,7 +207,7 @@ function EditorPageInner() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex h-dvh flex-col bg-zinc-50 font-sans dark:bg-black">
       {/* 헤더 */}
       <header className="shrink-0 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
         <div className="flex items-center justify-between gap-4 px-4 py-2">
@@ -247,7 +247,7 @@ function EditorPageInner() {
               title="다운로드"
             >
               <Download className="h-3.5 w-3.5" />
-              다운로드
+              <span className="hidden sm:inline">다운로드</span>
             </button>
             <button
               type="button"
@@ -256,7 +256,7 @@ function EditorPageInner() {
               title="공유하기"
             >
               <Share2 className="h-3.5 w-3.5" />
-              공유
+              <span className="hidden sm:inline">공유</span>
             </button>
             <button
               type="button"
@@ -267,12 +267,12 @@ function EditorPageInner() {
               {saving ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  저장 중...
+                  <span className="hidden sm:inline">저장 중...</span>
                 </>
               ) : (
                 <>
                   <Save className="h-3.5 w-3.5" />
-                  저장
+                  <span className="hidden sm:inline">저장</span>
                 </>
               )}
             </button>
@@ -295,10 +295,10 @@ function EditorPageInner() {
         onClose={() => setShareOpen(false)}
       />
 
-      {/* 분할 뷰: 에디터 + 미리보기 */}
-      <div className="flex flex-1 min-h-0">
+      {/* 분할 뷰: 에디터 + 미리보기 (모바일 세로 적층, md 이상 좌우 분할) */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* 좌측: Monaco 에디터 */}
-        <div className="flex-1 min-w-0 border-r border-zinc-200 dark:border-zinc-800">
+        <div className="flex-1 min-h-0 min-w-0 border-b border-zinc-200 md:border-b-0 md:border-r dark:border-zinc-800">
           <Editor
             language="markdown"
             value={content}
@@ -320,7 +320,7 @@ function EditorPageInner() {
         </div>
 
         {/* 우측: 실시간 미리보기 */}
-        <div className="flex-1 min-w-0 overflow-y-auto bg-white dark:bg-zinc-950">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto bg-white dark:bg-zinc-950">
           <div className="px-6 py-6">
             <div className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
               미리보기
