@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
 import { ArrowLeft, Download, Save, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
@@ -327,7 +328,7 @@ function EditorPageInner() {
             </div>
             <article className="prose prose-zinc dark:prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-sm">
               <Markdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkFrontmatter, remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
                   img: ({ src, alt, ...rest }) => {
