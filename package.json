@@ -12,10 +12,14 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "hash-password": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/scripts/hash-password.mts",
+    "rebuild-index": "tsx src/scripts/rebuild-index.mts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@types/archiver": "^8.0.0",
+    "archiver": "^8.0.0",
     "better-sqlite3": "^13.0.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^1.26.0",

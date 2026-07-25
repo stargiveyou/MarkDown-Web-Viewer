@@ -14,7 +14,7 @@
 // ---------------------------------------------------------------------------
 
 /** 파일 목록 정렬 키. 기본값은 `mtime`(수정일 내림차순). */
-export type SortKey = 'mtime' | 'name' | 'size';
+export type SortKey = 'mtime' | 'name' | 'size' | 'ctime';
 
 /** 공유 대상 채널. 카카오는 채택하지 않음 (ADR-004). */
 export type ShareTarget = 'discord' | 'slack';
@@ -33,7 +33,12 @@ export interface ApiError {
   message: string;
 }
 
-/** 계약상 사용하는 상태 코드 전체 집합. 이 외의 코드는 반환하지 않는다. */
+/**
+ * 계약상 사용하는 상태 코드 전체 집합. 이 외의 코드는 반환하지 않는다.
+ *
+ * 500과 502를 구분하는 이유: 사용자가 취해야 할 행동이 다르다.
+ * 502(webhook 실패)는 재시도가 의미 있지만, 500(서버 내부)은 관리자 확인이 필요하다.
+ */
 export type ApiErrorCode =
   | 400 // bad request — 경로 검증 실패 포함
   | 401 // unauthenticated — 프론트는 /login 리다이렉트
@@ -41,6 +46,7 @@ export type ApiErrorCode =
   | 413 // payload too large — UPLOAD_MAX_BYTES 초과
   | 415 // unsupported media type — ALLOWED_EXTENSIONS 위반
   | 429 // rate limited
+  | 500 // internal server error — 디스크 쓰기 실패 등. 원인은 서버에만 로깅한다
   | 502; // upstream(webhook) 실패
 
 // ---------------------------------------------------------------------------
