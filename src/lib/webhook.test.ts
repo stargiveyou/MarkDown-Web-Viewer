@@ -100,7 +100,7 @@ describe('buildDiscordPayload', () => {
     expect(embed.url).toBe(SAMPLE_PAYLOAD.appUrl);
     expect(embed.color).toBe(0x5865f2);
     expect(embed.timestamp).toBe(new Date(SAMPLE_PAYLOAD.mtime).toISOString());
-    expect(embed.footer).toEqual({ text: 'MD Workspace' });
+    expect(embed.footer).toEqual({ text: 'Husky Works MDs' });
   });
 });
 
@@ -129,13 +129,13 @@ describe('buildSlackPayload', () => {
     expect(section.text.text).toContain('수정일');
   });
 
-  it('context block에 MD Workspace 텍스트가 있다', () => {
+  it('context block에 Husky Works MDs 텍스트가 있다', () => {
     const payload = buildSlackPayload(SAMPLE_PAYLOAD) as Record<string, unknown>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const context = (payload.blocks as any[])[1];
 
     expect(context.type).toBe('context');
-    expect(context.elements[0].text).toContain('MD Workspace');
+    expect(context.elements[0].text).toContain('Husky Works MDs');
   });
 });
 

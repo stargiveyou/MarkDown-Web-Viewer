@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MD Workspace",
+  title: "Husky Works MDs",
   description: "마크다운·미디어 업로드/조회/편집 워크스페이스",
 };
 
