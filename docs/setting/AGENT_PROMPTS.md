@@ -1,4 +1,4 @@
-# 팀 에이전트 프롬프트 — Mac Mini Husky Works MDs
+# 팀 에이전트 프롬프트 — Husky Works MDs
 
 > 기준 문서: **PLAN v1.0 Final** / **DECISIONS.md** (이 문서가 v4.0 스펙보다 우선).
 > 사용법: 각 에이전트에 아래 **[SHARED CONTEXT]** + 해당 역할 프롬프트를 함께 붙여 사용.
@@ -9,7 +9,7 @@
 ## [SHARED CONTEXT] — 모든 에이전트 공통 (필수 선행)
 
 ```text
-PROJECT: "Mac Mini Husky Works MDs & Direct Local Storage Server"
+PROJECT: "Husky Works MDs & Direct Local Storage Server"
 A Next.js (App Router) web app on a Mac mini, exposed to the internet via ngrok.
 Single storage = the Mac mini local disk (~/MarkdownDocs). No FTP. No KakaoTalk.
 

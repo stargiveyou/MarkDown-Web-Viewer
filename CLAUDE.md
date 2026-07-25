@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-**Mac Mini Husky Works MDs & Direct Local Storage Server** — 맥미니 로컬 디스크(`~/MarkdownDocs`)에 저장된 `.md`/미디어를 ngrok으로 인터넷에 공개된 웹에서 **업로드·조회·편집·검색·공유**하는 Next.js(App Router) 앱.
+**Husky Works MDs & Direct Local Storage Server** — 맥미니 로컬 디스크(`~/MarkdownDocs`)에 저장된 `.md`/미디어를 ngrok으로 인터넷에 공개된 웹에서 **업로드·조회·편집·검색·공유**하는 Next.js(App Router) 앱.
 
 현재 상태: **Stage 3(검색 · 정렬 · 태그 FTS5) 완료 / Stage 4 착수 대기**. 기준 문서는 [docs/setting/](docs/setting/) 3종이며, 그중 [PLAN.md](docs/setting/PLAN.md)가 최상위 SOURCE OF TRUTH다. 진행 상황은 [docs/plan/](docs/plan/)에서 확인한다.
 
