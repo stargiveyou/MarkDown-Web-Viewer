@@ -17,8 +17,10 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Editor, { type OnMount } from '@monaco-editor/react';
+import '@/lib/monaco-config'; // Monaco를 CDN이 아닌 로컬(public/monaco/vs)에서 로드
 import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
 import { ArrowLeft, Download, Save, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
@@ -327,7 +329,7 @@ function EditorPageInner() {
             </div>
             <article className="prose prose-zinc dark:prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-sm">
               <Markdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkFrontmatter, remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
                   img: ({ src, alt, ...rest }) => {
