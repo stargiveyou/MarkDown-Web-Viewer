@@ -16,6 +16,9 @@ next-env.d.ts
 # 테스트/커버리지
 /coverage
 
+# Monaco 자산 — node_modules에서 복사(scripts/copy-monaco.mjs)해 재생성 가능하므로 추적하지 않는다.
+/public/monaco/
+
 # 런타임 데이터 — 검색 색인과 썸네일 캐시는 재생성 가능하므로 추적하지 않는다.
 /.cache/
 *.sqlite
