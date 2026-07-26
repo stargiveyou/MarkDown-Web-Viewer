@@ -17,6 +17,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Editor, { type OnMount } from '@monaco-editor/react';
+import '@/lib/monaco-config'; // Monaco를 CDN이 아닌 로컬(public/monaco/vs)에서 로드
 import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
