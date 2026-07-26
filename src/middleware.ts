@@ -138,6 +138,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  *
  * 제외 대상:
  *   - `_next/static`, `_next/image` : 빌드 산출물. 시크릿이 없고 미들웨어를 태우면 느려진다.
+ *   - `monaco/` : self-host한 Monaco 에디터 정적 자산(public/monaco/vs). 공개 라이브러리라 시크릿이 없다.
  *   - `favicon.ico` / `*.svg|png|...` : public/ 정적 파일
  *
  * 주의:
@@ -147,6 +148,6 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|monaco/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
   ],
 };
