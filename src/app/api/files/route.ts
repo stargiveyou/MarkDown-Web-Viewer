@@ -128,10 +128,52 @@ export async function GET(request: Request): Promise<NextResponse> {
       ctimeMap.set(subpath, Math.round(stat.birthtimeMs));
 
       if (isDir) {
-        // 폴더: 숨김 파일을 제외한 직접 하위 항목 수
+        // 폴더: 숨김 파일을 제외한 직접 하위 항목 수 + 최근 마크다운 요약
         try {
           const children = await fs.readdir(entryPath);
-          entry.fileCount = children.filter((c) => !c.startsWith('.')).length;
+          const visibleChildren = children.filter((c) => !c.startsWith('.'));
+          entry.fileCount = visibleChildren.length;
+
+          // 최근 수정된 마크다운 파일 최대 3개의 이름+요약 수집
+          const mdChildren = visibleChildren.filter(
+            (c) => c.endsWith('.md') || c.endsWith('.markdown'),
+          );
+          if (mdChildren.length > 0) {
+            // stat으로 mtime 기준 정렬 후 상위 3개
+            const mdStats = await Promise.all(
+              mdChildren.map(async (c) => {
+                try {
+                  const s = await fs.stat(path.join(entryPath, c));
+                  return { name: c, mtimeMs: s.mtimeMs };
+                } catch {
+                  return null;
+                }
+              }),
+            );
+            const sorted = mdStats
+              .filter((s): s is NonNullable<typeof s> => s !== null)
+              .sort((a, b) => b.mtimeMs - a.mtimeMs)
+              .slice(0, 3);
+
+            const recentFiles: { name: string; snippet?: string }[] = [];
+            for (const { name: mdName } of sorted) {
+              try {
+                const raw = await fs.readFile(path.join(entryPath, mdName), 'utf8');
+                const parsed = matter(raw);
+                const title =
+                  typeof parsed.data.title === 'string' && parsed.data.title.trim() !== ''
+                    ? parsed.data.title.trim()
+                    : mdName.replace(/\.(md|markdown)$/, '');
+                const snippet = extractSnippet(parsed.content, 80);
+                recentFiles.push({ name: title, snippet: snippet || undefined });
+              } catch {
+                recentFiles.push({ name: mdName.replace(/\.(md|markdown)$/, '') });
+              }
+            }
+            if (recentFiles.length > 0) {
+              entry.recentFiles = recentFiles;
+            }
+          }
         } catch {
           entry.fileCount = 0;
         }

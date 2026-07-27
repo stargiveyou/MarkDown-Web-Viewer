@@ -1,28 +1,24 @@
 'use client';
 
 /**
- * 워크스페이스 메인 페이지 -- /workspace 또는 /workspace?path=subfolder
+ * 워크스페이스 메인 페이지 — Split-Sidebar Bento Grid 대시보드.
  *
- * Stage 1 골격(업로드 모달, 로그아웃)을 유지하면서 Stage 2/3에서 확장:
- * - useSearchParams로 path 쿼리 읽기
- * - GET /api/files?path=...&sort=...&tag=... 호출하여 파일 목록 로드
- * - Breadcrumb + GridView 렌더링
- * - 정렬 드롭다운 (mtime/name/size/ctime)
- * - 업로드 성공 후 파일 목록 재조회
- * - Stage 3: 검색 바 + 검색 결과 + 태그 칩 바
+ * 레이아웃: 좌측 고정 사이드바 + 우측 메인(Sticky Header + Bento Grid).
+ * 하위 폴더 진입 시에도 동일 사이드바 유지, 메인 영역만 갱신.
  */
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { UploadModal } from '@/components/upload/UploadModal';
+import { Sidebar } from '@/components/workspace/Sidebar';
 import { Breadcrumb } from '@/components/workspace/Breadcrumb';
-import { GridView } from '@/components/workspace/GridView';
+import { BentoGrid } from '@/components/workspace/BentoGrid';
 import { SearchBar } from '@/components/workspace/SearchBar';
 import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, Search } from 'lucide-react';
 import type {
   FileEntry,
   FilesResponse,
@@ -39,7 +35,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'ctime', label: '생성일' },
 ];
 
-/** 파일 목록을 API에서 가져온다. tag 파라미터 지원. */
+/** 파일 목록을 API에서 가져온다. */
 async function loadFiles(
   path: string,
   sortKey: SortKey,
@@ -62,11 +58,13 @@ function WorkspacePageInner() {
 
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
-  const [sort, setSort] = useState<SortKey>('mtime');
+  const [sort, setSort] = useState<SortKey>('name');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 재조회 트리거용 카운터
+  // 사이드바 폴더 목록 (루트 폴더들)
+  const [rootFolders, setRootFolders] = useState<{ name: string; subpath: string }[]>([]);
+
   const [refreshKey, setRefreshKey] = useState(0);
 
   // 검색 상태
@@ -77,6 +75,25 @@ function WorkspacePageInner() {
   // 태그 상태
   const [tags, setTags] = useState<TagCount[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // 모바일 사이드바 토글
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // 루트 폴더 목록 로드 (사이드바용)
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await apiFetch<FilesResponse>('/api/files?sort=name');
+        setRootFolders(
+          data.entries
+            .filter((e) => e.type === 'folder')
+            .map((e) => ({ name: e.name, subpath: e.subpath })),
+        );
+      } catch {
+        // 사이드바 폴더 로딩 실패는 치명적이지 않음
+      }
+    })();
+  }, [refreshKey]);
 
   // path, sort, refreshKey, activeTag 변경 시 목록 재조회
   useEffect(() => {
@@ -105,32 +122,26 @@ function WorkspacePageInner() {
     return () => { cancelled = true; };
   }, [currentPath, sort, refreshKey, activeTag]);
 
-  // 마운트 시 + refreshKey 변경 시 태그 목록 조회
+  // 태그 목록 조회
   useEffect(() => {
     (async () => {
       try {
         const data = await apiFetch<TagsResponse>('/api/tags');
         setTags(data.tags);
       } catch {
-        // 태그 로딩 실패는 치명적이지 않음 -- 바를 숨기면 된다
+        // 태그 로딩 실패는 치명적이지 않음
       }
     })();
   }, [refreshKey]);
 
-  /**
-   * 업로드 성공 훅 지점.
-   * Stage 2: refreshKey를 증가시켜 파일 목록을 재조회한다.
-   */
   const handleUploaded = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
-  /** 에러 상태에서 "다시 시도" 클릭. */
   const handleRetry = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
-  // 검색 콜백
   const handleSearchResults = useCallback(
     (results: SearchResult[], query: string, indexing: boolean) => {
       setSearchResults(results);
@@ -146,7 +157,6 @@ function WorkspacePageInner() {
     setSearchIndexing(false);
   }, []);
 
-  // 태그 선택
   function handleTagSelect(tag: string | null) {
     setActiveTag(tag);
   }
@@ -161,7 +171,6 @@ function WorkspacePageInner() {
       router.refresh();
     } catch (caught) {
       const err = toApiRequestError(caught);
-      // 401이면 fetcher가 이미 /login으로 보내는 중이다.
       if (err.code !== 401) {
         emitToast({ message: '로그아웃에 실패했습니다. 다시 시도해 주세요.', variant: 'error' });
         setLoggingOut(false);
@@ -169,10 +178,8 @@ function WorkspacePageInner() {
     }
   }
 
-  // 브레드크럼 내비게이션
   function handleBreadcrumbNavigate(pathUpTo: number) {
     if (pathUpTo === -1) {
-      // 루트로 이동
       router.push('/workspace');
     } else {
       const targetPath = breadcrumb.slice(0, pathUpTo + 1).join('/');
@@ -180,17 +187,15 @@ function WorkspacePageInner() {
     }
   }
 
-  // 폴더 클릭
   function handleFolderClick(subpath: string) {
     router.push(`/workspace?path=${encodeURIComponent(subpath)}`);
+    setMobileMenuOpen(false);
   }
 
-  // 파일 클릭
   function handleFileClick(entry: FileEntry) {
     if (entry.type === 'markdown') {
       router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
     } else if (entry.type === 'image') {
-      // 이미지 새 탭에서 원본 열기
       window.open(`/api/thumbnail?path=${encodeURIComponent(entry.subpath)}&w=1200`, '_blank');
     }
   }
@@ -198,108 +203,146 @@ function WorkspacePageInner() {
   const isSearchMode = searchResults !== null;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <h1 className="shrink-0 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Husky Works MDs
-          </h1>
+    <div className="flex min-h-screen bg-slate-900">
+      {/* 좌측 사이드바 (Desktop) */}
+      <Sidebar
+        folders={rootFolders}
+        currentPath={currentPath}
+        onFolderClick={handleFolderClick}
+        onHomeClick={() => { router.push('/workspace'); setMobileMenuOpen(false); }}
+        onLogout={handleLogout}
+        loggingOut={loggingOut}
+      />
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* 검색 바 */}
-            <SearchBar onResults={handleSearchResults} onClear={handleSearchClear} />
-
-            {/* 정렬 드롭다운 -- 검색 모드에서는 비활성화 */}
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              disabled={isSearchMode}
-              aria-label="정렬 기준"
-              className="rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-700 outline-none focus-visible:border-zinc-900 focus-visible:ring-2 focus-visible:ring-zinc-900/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:focus-visible:border-zinc-100 dark:focus-visible:ring-zinc-100/20"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => setUploadOpen(true)}
-              className="rounded-lg bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:focus-visible:outline-zinc-100"
-            >
-              업로드
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:outline-zinc-100"
-            >
-              {loggingOut ? '로그아웃 중...' : '로그아웃'}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
-        {/* 브레드크럼 */}
-        <div className="mb-6">
-          <Breadcrumb segments={breadcrumb} onNavigate={handleBreadcrumbNavigate} />
-        </div>
-
-        {/* 태그 칩 바 -- 검색 모드가 아닐 때만 표시 */}
-        {!isSearchMode && tags.length > 0 && (
-          <div className="mb-6">
-            <TagBar tags={tags} activeTag={activeTag} onTagSelect={handleTagSelect} />
-          </div>
-        )}
-
-        {/* 검색 모드: SearchResults 표시 */}
-        {isSearchMode ? (
-          <SearchResults
-            query={searchQuery}
-            results={searchResults}
-            indexing={searchIndexing}
+      {/* 모바일 사이드바 오버레이 */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMobileMenuOpen(false)}
           />
-        ) : (
-          <>
-            {/* 로딩 상태 */}
-            {loading && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-                <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-400">
-                  파일 목록을 불러오는 중...
-                </span>
-              </div>
-            )}
+          <aside className="relative z-50 flex w-64 h-full bg-slate-950 border-r border-slate-800 p-5 flex-col justify-between">
+            <Sidebar
+              folders={rootFolders}
+              currentPath={currentPath}
+              onFolderClick={handleFolderClick}
+              onHomeClick={() => { router.push('/workspace'); setMobileMenuOpen(false); }}
+              onLogout={handleLogout}
+              loggingOut={loggingOut}
+            />
+          </aside>
+        </div>
+      )}
 
-            {/* 에러 상태 */}
-            {error && !loading && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center dark:border-red-800/40 dark:bg-red-950/20">
-                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                <button
-                  type="button"
-                  onClick={handleRetry}
-                  className="mt-4 rounded-lg border border-red-300 px-3.5 py-2 text-sm text-red-700 transition-colors hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
-                >
-                  다시 시도
-                </button>
-              </div>
-            )}
+      {/* 우측 메인 영역 */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky Header */}
+        <header className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
+          <div className="flex items-center justify-between gap-4 px-6 py-4">
+            <div className="flex items-center gap-3">
+              {/* 모바일 햄버거 */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
 
-            {/* 파일 그리드 */}
-            {!loading && !error && (
-              <GridView
-                entries={entries}
-                onFolderClick={handleFolderClick}
-                onFileClick={handleFileClick}
-              />
-            )}
-          </>
-        )}
-      </main>
+              {/* 검색 바 */}
+              <div className="relative">
+                <SearchBar onResults={handleSearchResults} onClear={handleSearchClear} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* 정렬 드롭다운 */}
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                disabled={isSearchMode}
+                aria-label="정렬 기준"
+                className="hidden sm:block rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 outline-none focus-visible:border-amber-500 focus-visible:ring-1 focus-visible:ring-amber-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* 업로드 버튼 */}
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">새 문서 업로드</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* 메인 컨텐츠 */}
+        <main className="flex-1 p-8 space-y-6 no-scrollbar overflow-y-auto">
+          {/* 브레드크럼 — 하위 폴더에 있을 때만 표시 */}
+          {breadcrumb.length > 0 && (
+            <Breadcrumb segments={breadcrumb} onNavigate={handleBreadcrumbNavigate} />
+          )}
+
+          {/* 태그 칩 바 */}
+          {!isSearchMode && tags.length > 0 && (
+            <TagBar tags={tags} activeTag={activeTag} onTagSelect={handleTagSelect} />
+          )}
+
+          {/* 검색 모드 */}
+          {isSearchMode ? (
+            <SearchResults
+              query={searchQuery}
+              results={searchResults}
+              indexing={searchIndexing}
+            />
+          ) : (
+            <>
+              {/* 로딩 */}
+              {loading && (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                  <span className="ml-2 text-sm text-slate-500">
+                    파일 목록을 불러오는 중...
+                  </span>
+                </div>
+              )}
+
+              {/* 에러 */}
+              {error && !loading && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-950/20 px-6 py-8 text-center">
+                  <p className="text-sm text-red-400">{error}</p>
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    className="mt-4 rounded-xl border border-red-500/30 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-950/30"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              )}
+
+              {/* Bento Grid */}
+              {!loading && !error && (
+                <BentoGrid
+                  entries={entries}
+                  onFolderClick={handleFolderClick}
+                  onFileClick={handleFileClick}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <UploadModal
         open={uploadOpen}
@@ -315,9 +358,9 @@ export default function WorkspacePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-          <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex min-h-screen items-center justify-center bg-slate-900">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <span className="ml-2 text-sm text-slate-500">
             워크스페이스를 불러오는 중...
           </span>
         </div>

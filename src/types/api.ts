@@ -92,6 +92,8 @@ export interface FileEntry {
   tags?: string[];
   /** frontmatter title. 없으면 프론트가 name으로 대체. */
   title?: string;
+  /** 폴더 카드에 표시할 최근 수정 파일 요약 (최대 3개). type === 'folder'일 때만. */
+  recentFiles?: { name: string; snippet?: string }[];
 }
 
 export interface FilesResponse {

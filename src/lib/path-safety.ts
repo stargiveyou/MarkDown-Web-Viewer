@@ -149,7 +149,7 @@ export function resolveUnderRoot(userPath: string): string {
     return root;
   }
 
-  const decoded = decodeAndScreen(trimmed);
+  const decoded = decodeAndScreen(trimmed.normalize('NFC'));
 
   // 선행 `/`는 위 검사에서 이미 거부됐으므로 여기 오는 것은 순수 상대 경로뿐이다.
   const resolved = path.resolve(root, decoded);
@@ -303,5 +303,51 @@ export function sanitizeFilename(name: string): string {
     result = base + ext;
   }
 
+  return result;
+}
+
+/**
+ * 업로드 대상 폴더 경로의 각 세그먼트를 정규화한다 — Windows 한글 깨짐 방지.
+ *
+ * Windows에서 전송된 폴더명은 NFC/NFD가 불일치하거나, 브라우저·프록시 경유 시
+ * 인코딩이 깨질 수 있다. 각 세그먼트를:
+ *   1. NFC 정규화
+ *   2. 제어문자 제거
+ *   3. 파일시스템 위험 문자 치환
+ *   4. U+FFFD(replacement character) 제거 — 이미 깨진 바이트의 잔재
+ *   5. 선행/후행 점·공백 정리
+ *
+ * `resolveUnderRoot`를 통과한 뒤, mkdir 직전에 호출한다.
+ */
+export function sanitizeFolderPath(rawPath: string): string {
+  if (typeof rawPath !== 'string') {
+    throw new PathSafetyError('folder path is not a string');
+  }
+
+  const normalized = rawPath.normalize('NFC');
+  const segments = normalized.split('/').filter((s) => s.length > 0);
+
+  const sanitized = segments.map((seg) => {
+    let s = seg
+      // 제어문자 제거
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      // U+FFFD (replacement character) 제거 — 인코딩 실패의 잔재
+      .replace(/\uFFFD/g, '')
+      // 파일시스템·셸 위험 문자 치환
+      .replace(/[<>:"|?*\\]/g, '_')
+      // 공백류 정리
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // 선행 점 제거 (숨김 폴더 방지)
+    s = s.replace(/^\.+/, '');
+    // 후행 점·공백 제거
+    s = s.replace(/[.\s]+$/, '');
+
+    return s;
+  });
+
+  // 빈 세그먼트 제거 (sanitize 후 빈 문자열이 된 경우)
+  const result = sanitized.filter((s) => s.length > 0).join('/');
   return result;
 }

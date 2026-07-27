@@ -35,6 +35,7 @@ import {
   assertRealPathUnderRoot,
   resolveUnderRoot,
   sanitizeFilename,
+  sanitizeFolderPath,
   toSubpath,
 } from '@/lib/path-safety';
 import { checkRateLimit, rateLimitKeyFor } from '@/lib/rate-limit';
@@ -203,7 +204,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // 필드가 없으면 루트로 해석한다(프론트가 루트일 때 필드를 생략한다).
   const targetPathRaw = form.get(UPLOAD_FIELD.targetPath);
-  const targetPath = typeof targetPathRaw === 'string' ? targetPathRaw : '';
+  // Windows 한글 폴더명 깨짐 방지: NFC 정규화 + 위험문자·U+FFFD 제거
+  const targetPath = typeof targetPathRaw === 'string'
+    ? sanitizeFolderPath(targetPathRaw)
+    : '';
 
   const saved: UploadedFileInfo[] = [];
   // targetDir을 try 블록 밖에서도 사용해야 하므로(알림 페이로드) 바깥에 선언한다.
