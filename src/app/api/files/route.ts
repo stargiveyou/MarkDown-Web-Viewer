@@ -23,6 +23,7 @@ import {
   classifyEntry,
   extractSnippet,
   isThumbnailable,
+  isVersionBackup,
 } from '@/lib/file-utils';
 import {
   PathSafetyError,
@@ -93,8 +94,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     // --- 디렉터리 읽기 ---
     const dirents = await fs.readdir(absoluteDir, { withFileTypes: true });
 
-    // 숨김 파일 제외 (.thumbcache, .DS_Store 등)
-    const visibleDirents = dirents.filter((d) => !d.name.startsWith('.'));
+    // 숨김 파일 + 버전 백업 파일 제외 (.thumbcache, .DS_Store, *_YYYYMMDD-HHmmss.* 등)
+    const visibleDirents = dirents.filter(
+      (d) => !d.name.startsWith('.') && !isVersionBackup(d.name),
+    );
 
     // --- 각 엔트리 구성 ---
     const entries: FileEntry[] = [];

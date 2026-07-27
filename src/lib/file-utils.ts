@@ -38,6 +38,23 @@ export function isThumbnailable(name: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// 버전 백업 판정
+// ---------------------------------------------------------------------------
+
+/** 버전 백업 파일명 패턴: `name_YYYYMMDD-HHmmss.ext` */
+const VERSION_PATTERN = /_\d{8}-\d{6}$/;
+
+/**
+ * 파일이 버전 백업본인지 판정한다 (확장자를 빼고 `_YYYYMMDD-HHmmss`로 끝나면 true).
+ * 파일 목록에서 버전 백업 파일을 숨기는 데 사용한다.
+ */
+export function isVersionBackup(filename: string): boolean {
+  const dot = filename.lastIndexOf('.');
+  const base = dot === -1 ? filename : filename.slice(0, dot);
+  return VERSION_PATTERN.test(base);
+}
+
+// ---------------------------------------------------------------------------
 // 썸네일 URL
 // ---------------------------------------------------------------------------
 

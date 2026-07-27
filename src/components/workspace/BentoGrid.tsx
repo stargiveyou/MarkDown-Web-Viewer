@@ -8,8 +8,10 @@
  * 마크다운/이미지/기타 파일은 일반 카드 형태로 표시한다.
  */
 
-import { Folder, FileText, File, ChevronRight } from 'lucide-react';
-import type { FileEntry } from '@/types/api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Folder, FileText, File, ChevronRight, History, Download } from 'lucide-react';
+import { apiFetch } from '@/lib/fetcher';
+import type { FileEntry, FileVersion, FileVersionsResponse } from '@/types/api';
 
 export interface BentoGridProps {
   entries: FileEntry[];
@@ -191,7 +193,7 @@ function FolderCard({
 }
 
 // ---------------------------------------------------------------------------
-// 파일 카드 (마크다운 / 이미지 / 기타)
+// 파일 카드 (마크다운 / 이미지 / 기타) + 버전 드롭다운
 // ---------------------------------------------------------------------------
 
 function FileCard({
@@ -204,64 +206,159 @@ function FileCard({
   const isMarkdown = entry.type === 'markdown';
   const isImage = entry.type === 'image';
 
-  return (
-    <button
-      type="button"
-      onClick={() => onClick(entry)}
-      className="group col-span-1 flex flex-col overflow-hidden rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md"
-    >
-      {/* 썸네일 영역 */}
-      {entry.coverThumbUrl ? (
-        <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={entry.coverThumbUrl}
-            alt={entry.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
-          />
-        </div>
-      ) : (
-        <div className="flex aspect-video w-full items-center justify-center bg-slate-900/50">
-          {isMarkdown ? (
-            <FileText className="h-10 w-10 text-slate-700" />
-          ) : (
-            <File className="h-10 w-10 text-slate-700" />
-          )}
-        </div>
-      )}
+  const [versionOpen, setVersionOpen] = useState(false);
+  const [versions, setVersions] = useState<FileVersion[]>([]);
+  const [versionsLoaded, setVersionsLoaded] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-      <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <span className="truncate text-sm font-medium text-slate-100 group-hover:text-amber-400 transition-colors">
-          {isMarkdown ? (entry.title || entry.name) : entry.name}
-        </span>
-        {isMarkdown && entry.snippet && (
-          <p className="line-clamp-2 text-xs text-slate-500 leading-relaxed">
-            {entry.snippet}
-          </p>
+  const loadVersions = useCallback(async () => {
+    if (versionsLoaded) return;
+    try {
+      const data = await apiFetch<FileVersionsResponse>(
+        `/api/file-versions?path=${encodeURIComponent(entry.subpath)}`,
+      );
+      setVersions(data.versions);
+      setVersionsLoaded(true);
+    } catch {
+      setVersionsLoaded(true);
+    }
+  }, [entry.subpath, versionsLoaded]);
+
+  const handleVersionToggle = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!versionOpen) {
+        loadVersions();
+      }
+      setVersionOpen((prev) => !prev);
+    },
+    [versionOpen, loadVersions],
+  );
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    if (!versionOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setVersionOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [versionOpen]);
+
+  return (
+    <div className="group relative col-span-1 flex flex-col overflow-visible rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => onClick(entry)}
+        className="flex flex-col overflow-hidden rounded-3xl text-left w-full"
+      >
+        {/* 썸네일 영역 */}
+        {entry.coverThumbUrl ? (
+          <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={entry.coverThumbUrl}
+              alt={entry.name}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            />
+          </div>
+        ) : (
+          <div className="flex aspect-video w-full items-center justify-center bg-slate-900/50">
+            {isMarkdown ? (
+              <FileText className="h-10 w-10 text-slate-700" />
+            ) : (
+              <File className="h-10 w-10 text-slate-700" />
+            )}
+          </div>
         )}
-        <div className="flex items-center gap-2 mt-1">
-          {!isImage && entry.size > 0 && (
-            <span className="text-[11px] text-slate-600">{formatSize(entry.size)}</span>
+
+        <div className="flex flex-1 flex-col gap-1.5 p-4">
+          <span className="truncate text-sm font-medium text-slate-100 group-hover:text-amber-400 transition-colors">
+            {isMarkdown ? (entry.title || entry.name) : entry.name}
+          </span>
+          {isMarkdown && entry.snippet && (
+            <p className="line-clamp-2 text-xs text-slate-500 leading-relaxed">
+              {entry.snippet}
+            </p>
           )}
-          {isImage && (
-            <span className="text-[11px] text-slate-600">{formatSize(entry.size)}</span>
+          <div className="flex items-center gap-2 mt-1">
+            {entry.size > 0 && (
+              <span className="text-[11px] text-slate-600">{formatSize(entry.size)}</span>
+            )}
+            <span className="text-[11px] text-slate-600">{formatRelativeTime(entry.mtime)}</span>
+          </div>
+          {entry.tags && entry.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {entry.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex rounded-full bg-slate-700/50 px-2 py-0.5 text-[11px] text-slate-400"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           )}
-          <span className="text-[11px] text-slate-600">{formatRelativeTime(entry.mtime)}</span>
         </div>
-        {entry.tags && entry.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {entry.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex rounded-full bg-slate-700/50 px-2 py-0.5 text-[11px] text-slate-400"
-              >
-                {tag}
+      </button>
+
+      {/* 버전 히스토리 버튼 */}
+      <div className="absolute top-2 right-2 z-10" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={handleVersionToggle}
+          className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+          title="이전 버전 보기"
+        >
+          <History className="h-3 w-3" />
+        </button>
+
+        {/* 버전 드롭다운 */}
+        {versionOpen && (
+          <div className="absolute right-0 top-full mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700 shadow-xl overflow-hidden">
+            <div className="px-3 py-2 border-b border-slate-700/50">
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                이전 버전
               </span>
-            ))}
+            </div>
+            {versions.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-slate-500">이전 버전이 없습니다</p>
+              </div>
+            ) : (
+              <div className="max-h-48 overflow-y-auto no-scrollbar">
+                {versions.map((ver) => {
+                  const isMd = ver.name.endsWith('.md') || ver.name.endsWith('.markdown');
+                  const href = isMd
+                    ? `/workspace/view?path=${encodeURIComponent(ver.subpath)}`
+                    : `/api/download?path=${encodeURIComponent(ver.subpath)}`;
+                  return (
+                    <a
+                      key={ver.subpath}
+                      href={href}
+                      target={isMd ? undefined : '_blank'}
+                      rel={isMd ? undefined : 'noopener noreferrer'}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 transition-colors"
+                    >
+                      <Download className="h-3 w-3 text-slate-500 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-slate-300 truncate">{ver.name}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {formatSize(ver.size)} · {formatRelativeTime(ver.mtime)}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }

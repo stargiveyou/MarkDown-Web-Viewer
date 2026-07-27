@@ -67,9 +67,6 @@ export const runtime = 'nodejs';
  */
 const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
-/** 파일명 충돌 시 `name-1.ext`, `name-2.ext` … 로 몇 번까지 시도할지. */
-const MAX_NAME_COLLISION_ATTEMPTS = 100;
-
 /** 업로드 파일 권한. 개인 저장소이므로 소유자 전용으로 만든다. */
 const UPLOADED_FILE_MODE = 0o600;
 
@@ -91,47 +88,25 @@ interface PreparedUpload {
 }
 
 /**
- * 목적지 파일명을 **원자적으로 선점**한다.
- *
- * `open(..., 'wx')`는 파일이 이미 있으면 EEXIST로 실패하는 원자 연산이라,
- * "존재 확인 후 쓰기"의 TOCTOU 없이 이름을 예약할 수 있다.
- * 같은 이름이 이미 있으면 덮어쓰지 않고 `name-1.ext`로 비켜 간다 —
- * 업로드가 기존 파일을 조용히 파괴하지 않게 하기 위함이다(보안 불변식 5의 취지).
- *
- * @returns 선점에 성공한 절대 경로 (0바이트 자리표시 파일이 생성된 상태)
+ * 날짜 포맷: `YYYYMMDD-HHmmss` (로컬 시간 기준).
+ * 버전 백업 파일명에 사용한다.
  */
-async function reserveDestination(directory: string, safeName: string): Promise<string> {
-  const ext = path.extname(safeName);
-  const base = safeName.slice(0, safeName.length - ext.length);
-
-  for (let attempt = 0; attempt <= MAX_NAME_COLLISION_ATTEMPTS; attempt += 1) {
-    const candidate = attempt === 0 ? safeName : `${base}-${attempt}${ext}`;
-    const target = path.join(directory, candidate);
-
-    try {
-      const handle = await fs.open(target, 'wx', UPLOADED_FILE_MODE);
-      await handle.close();
-      return target;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    }
-  }
-
-  // 100번을 다 쓴 경우의 마지막 수단. 랜덤 접미사는 사실상 충돌하지 않는다.
-  const fallback = path.join(directory, `${base}-${randomBytes(4).toString('hex')}${ext}`);
-  const handle = await fs.open(fallback, 'wx', UPLOADED_FILE_MODE);
-  await handle.close();
-  return fallback;
+function formatTimestamp(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 }
 
 /**
- * Atomic write — 보안 불변식 4.
+ * Atomic write (버전 보존) — 보안 불변식 4.
  *
  * 같은 디렉터리의 임시 파일에 전부 쓰고 `fsync`로 디스크에 확정한 뒤 `rename`한다.
  * 같은 파일시스템 안의 `rename`은 원자적이므로, 중간에 프로세스가 죽어도
  * 목적지에 **반쯤 쓰인 파일이 남지 않는다**. (직접 `writeFile(destination)` 금지)
  *
- * @returns 실제로 저장된 절대 경로 (이름 충돌 시 `-1` 등이 붙을 수 있다)
+ * 같은 경로·같은 파일명이 이미 존재하면 기존 파일을 `name_YYYYMMDD-HHmmss.ext`로
+ * 리네임하여 보존한 뒤, 새 파일을 원래 이름으로 저장한다.
+ *
+ * @returns 저장된 절대 경로
  */
 async function writeFileAtomically(
   directory: string,
@@ -139,6 +114,7 @@ async function writeFileAtomically(
   data: Buffer,
 ): Promise<string> {
   const tempPath = path.join(directory, `.mdws-upload-${randomBytes(12).toString('hex')}.tmp`);
+  const destination = path.join(directory, safeName);
 
   // 1) 임시 파일에 전량 기록 + fsync
   const temp = await fs.open(tempPath, 'wx', UPLOADED_FILE_MODE);
@@ -149,20 +125,31 @@ async function writeFileAtomically(
     await temp.close();
   }
 
-  // 2) 목적지 이름 선점 → 검증 → rename
-  let destination = '';
+  // 2) 기존 파일이 있으면 버전 백업으로 리네임
   try {
-    destination = await reserveDestination(directory, safeName);
-    // 선점한 최종 이름도 예외 없이 경로 안전 검증을 거친다(충돌 회피로 이름이 바뀌었을 수 있다).
     await assertRealPathUnderRoot(destination);
+
+    try {
+      const existingStat = await fs.stat(destination);
+      if (existingStat.isFile()) {
+        const ext = path.extname(safeName);
+        const base = safeName.slice(0, safeName.length - ext.length);
+        const timestamp = formatTimestamp(new Date(existingStat.mtimeMs));
+        const backupName = `${base}_${timestamp}${ext}`;
+        const backupPath = path.join(directory, backupName);
+        await fs.rename(destination, backupPath);
+      }
+    } catch (err) {
+      // ENOENT = 기존 파일 없음 → 정상 진행
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
+
+    // 3) 새 파일을 원래 이름으로 저장
     await fs.rename(tempPath, destination);
     return destination;
   } catch (error) {
     // 실패 시 잔여물을 남기지 않는다.
     await fs.rm(tempPath, { force: true }).catch(() => undefined);
-    if (destination !== '') {
-      await fs.rm(destination, { force: true }).catch(() => undefined);
-    }
     throw error;
   }
 }

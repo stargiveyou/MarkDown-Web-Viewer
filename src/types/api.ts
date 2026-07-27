@@ -212,6 +212,27 @@ export interface TagsResponse {
 }
 
 // ---------------------------------------------------------------------------
+// 파일 버전 — GET /api/file-versions?path=
+// ---------------------------------------------------------------------------
+
+export interface FileVersion {
+  /** 파일명 (예: report_20260727-143022.md) */
+  name: string;
+  /** MARKDOWN_ROOT 기준 상대 경로 */
+  subpath: string;
+  size: number;
+  /** epoch milliseconds */
+  mtime: number;
+}
+
+export interface FileVersionsResponse {
+  /** 현재(최신) 파일 */
+  current: FileVersion;
+  /** 이전 버전 목록 (최신순) */
+  versions: FileVersion[];
+}
+
+// ---------------------------------------------------------------------------
 // 공유·알림 — POST /api/share/notify
 // ---------------------------------------------------------------------------
 
