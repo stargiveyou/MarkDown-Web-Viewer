@@ -57,9 +57,9 @@ function FolderTreeItem({
     }
   }, [isAncestor, expanded]);
 
-  // 펼칠 때 서브폴더 로드
+  // 마운트 시 서브폴더 존재 여부를 미리 로드 (chevron 표시 판단용)
   useEffect(() => {
-    if (!expanded || loaded) return;
+    if (loaded) return;
 
     (async () => {
       try {
@@ -76,7 +76,7 @@ function FolderTreeItem({
       }
       setLoaded(true);
     })();
-  }, [expanded, loaded, folder.subpath]);
+  }, [loaded, folder.subpath]);
 
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
@@ -88,10 +88,10 @@ function FolderTreeItem({
 
   const handleClick = useCallback(() => {
     onFolderClick(folder.subpath);
-    if (!expanded) {
+    if (!expanded && children.length > 0) {
       setExpanded(true);
     }
-  }, [folder.subpath, onFolderClick, expanded]);
+  }, [folder.subpath, onFolderClick, expanded, children.length]);
 
   return (
     <div>
@@ -105,18 +105,22 @@ function FolderTreeItem({
         }`}
         style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: 12, paddingTop: 8, paddingBottom: 8 }}
       >
-        <button
-          type="button"
-          onClick={handleToggle}
-          className="shrink-0 p-0.5 rounded hover:bg-slate-700/50 transition-colors"
-          tabIndex={-1}
-        >
-          <ChevronRight
-            className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''} ${
-              isActive ? 'text-amber-400' : 'text-slate-600'
-            }`}
-          />
-        </button>
+        {loaded && children.length > 0 ? (
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="shrink-0 p-0.5 rounded hover:bg-slate-700/50 transition-colors"
+            tabIndex={-1}
+          >
+            <ChevronRight
+              className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''} ${
+                isActive ? 'text-amber-400' : 'text-slate-600'
+              }`}
+            />
+          </button>
+        ) : (
+          <span className="shrink-0 w-4" />
+        )}
         <Folder className="h-4 w-4 shrink-0" />
         <span className="truncate">{folder.name}</span>
       </button>
