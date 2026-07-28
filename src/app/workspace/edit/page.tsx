@@ -29,7 +29,7 @@ import { ConflictWarning } from '@/components/workspace/ConflictWarning';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import type { FileContentResponse, SaveFileRequest, SaveFileResponse } from '@/types/api';
 
-import 'highlight.js/styles/github.css';
+import 'highlight.js/styles/github-dark.css';
 
 /** 외부 URL인지 판별한다. */
 function isExternalUrl(src: string): boolean {
@@ -322,12 +322,12 @@ function EditorPageInner() {
         </div>
 
         {/* 우측: 실시간 미리보기 */}
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto bg-white dark:bg-zinc-950">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto bg-zinc-950">
           <div className="px-6 py-6">
-            <div className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
+            <div className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-600">
               미리보기
             </div>
-            <article className="prose prose-zinc dark:prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-sm">
+            <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md">
               <Markdown
                 remarkPlugins={[remarkFrontmatter, remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}

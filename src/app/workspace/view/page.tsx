@@ -22,7 +22,7 @@ import { emitToast } from '@/components/ui/toast-bus';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import type { FileContentResponse } from '@/types/api';
 
-import 'highlight.js/styles/github.css';
+import 'highlight.js/styles/github-dark.css';
 
 /** 외부 URL인지 판별한다. */
 function isExternalUrl(src: string): boolean {
@@ -102,21 +102,21 @@ function ViewerPageInner() {
   const fileName = path.substring(path.lastIndexOf('/') + 1) || path;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex flex-1 flex-col bg-zinc-950 font-sans text-zinc-300">
       {/* 헤더 */}
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
+      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={handleBackToList}
-              className="flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 rounded dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 rounded"
             >
               <ArrowLeft className="h-4 w-4" />
               목록으로
             </button>
-            <span className="text-zinc-300 dark:text-zinc-700">|</span>
-            <h1 className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <span className="text-zinc-700">|</span>
+            <h1 className="truncate text-sm font-medium text-zinc-100">
               {fileName}
             </h1>
           </div>
@@ -133,7 +133,7 @@ function ViewerPageInner() {
                   }
                 });
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
               title="다운로드"
             >
               <Download className="h-3.5 w-3.5" />
@@ -142,7 +142,7 @@ function ViewerPageInner() {
             <button
               type="button"
               onClick={() => setShareOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
               title="공유하기"
             >
               <Share2 className="h-3.5 w-3.5" />
@@ -151,7 +151,7 @@ function ViewerPageInner() {
             <button
               type="button"
               onClick={handleEdit}
-              className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
             >
               <Pencil className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">편집</span>
@@ -161,23 +161,23 @@ function ViewerPageInner() {
       </header>
 
       {/* 본문 */}
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         {loading && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-            <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+            <span className="ml-2 text-sm text-zinc-500">
               파일을 불러오는 중...
             </span>
           </div>
         )}
 
         {error && !loading && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center dark:border-red-800/40 dark:bg-red-950/20">
-            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <div className="rounded-xl border border-red-800/40 bg-red-950/20 px-6 py-8 text-center">
+            <p className="text-sm text-red-300">{error}</p>
             <button
               type="button"
               onClick={handleBackToList}
-              className="mt-4 rounded-lg border border-red-300 px-3.5 py-2 text-sm text-red-700 transition-colors hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+              className="mt-4 rounded-lg border border-red-700 px-3.5 py-2 text-sm text-red-300 transition-colors hover:bg-red-900/30"
             >
               목록으로 돌아가기
             </button>
@@ -185,7 +185,7 @@ function ViewerPageInner() {
         )}
 
         {!loading && !error && (
-          <article className="prose prose-zinc dark:prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-sm">
+          <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md">
             <Markdown
               remarkPlugins={[remarkFrontmatter, remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
@@ -226,9 +226,9 @@ export default function ViewerPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-          <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="flex flex-1 items-center justify-center bg-zinc-950">
+          <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+          <span className="ml-2 text-sm text-zinc-500">
             뷰어를 불러오는 중...
           </span>
         </div>
