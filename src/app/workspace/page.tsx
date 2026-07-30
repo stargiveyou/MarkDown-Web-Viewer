@@ -13,12 +13,14 @@ import { UploadModal } from '@/components/upload/UploadModal';
 import { Sidebar } from '@/components/workspace/Sidebar';
 import { Breadcrumb } from '@/components/workspace/Breadcrumb';
 import { BentoGrid } from '@/components/workspace/BentoGrid';
+import { CreateFolderModal } from '@/components/workspace/CreateFolderModal';
+import { MoveModal } from '@/components/workspace/MoveModal';
 import { SearchBar } from '@/components/workspace/SearchBar';
 import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { Loader2, Plus, Search } from 'lucide-react';
+import { Loader2, Plus, FolderPlus } from 'lucide-react';
 import type {
   FileEntry,
   FilesResponse,
@@ -54,6 +56,8 @@ function WorkspacePageInner() {
   const currentPath = searchParams.get('path') || '';
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const [entries, setEntries] = useState<FileEntry[]>([]);
@@ -138,6 +142,19 @@ function WorkspacePageInner() {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  const handleFolderCreated = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  const handleMoveClick = useCallback((entry: FileEntry) => {
+    setMoveTarget(entry);
+  }, []);
+
+  const handleMoved = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    setMoveTarget(null);
+  }, []);
+
   const handleRetry = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
@@ -193,6 +210,17 @@ function WorkspacePageInner() {
   }
 
   function handleFileClick(entry: FileEntry) {
+    // 읽음 처리: 로컬 상태 즉시 갱신 + 서버 기록 (fire-and-forget)
+    if (entry.unread) {
+      setEntries((prev) =>
+        prev.map((e) => (e.subpath === entry.subpath ? { ...e, unread: false } : e)),
+      );
+      apiFetch('/api/mark-read', {
+        method: 'POST',
+        body: JSON.stringify({ path: entry.subpath }),
+      }).catch(() => {});
+    }
+
     if (entry.type === 'markdown') {
       router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
     } else if (entry.type === 'image') {
@@ -273,6 +301,16 @@ function WorkspacePageInner() {
                 ))}
               </select>
 
+              {/* 새 폴더 버튼 */}
+              <button
+                type="button"
+                onClick={() => setCreateFolderOpen(true)}
+                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+              >
+                <FolderPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">새 폴더</span>
+              </button>
+
               {/* 업로드 버튼 */}
               <button
                 type="button"
@@ -337,6 +375,7 @@ function WorkspacePageInner() {
                   entries={entries}
                   onFolderClick={handleFolderClick}
                   onFileClick={handleFileClick}
+                  onMoveClick={handleMoveClick}
                 />
               )}
             </>
@@ -349,6 +388,20 @@ function WorkspacePageInner() {
         onClose={() => setUploadOpen(false)}
         initialTargetPath={currentPath}
         onUploaded={handleUploaded}
+      />
+
+      <CreateFolderModal
+        open={createFolderOpen}
+        onClose={() => setCreateFolderOpen(false)}
+        currentPath={currentPath}
+        onCreated={handleFolderCreated}
+      />
+
+      <MoveModal
+        open={moveTarget !== null}
+        onClose={() => setMoveTarget(null)}
+        entry={moveTarget}
+        onMoved={handleMoved}
       />
     </div>
   );

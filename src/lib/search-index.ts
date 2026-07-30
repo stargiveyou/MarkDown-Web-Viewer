@@ -203,7 +203,7 @@ export async function indexFile(subpath: string): Promise<void> {
 // 색인에서 파일 제거
 // ---------------------------------------------------------------------------
 
-function removeFromIndex(subpath: string): void {
+export function removeFromIndex(subpath: string): void {
   const d = ensureDb();
   d.transaction(() => {
     d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(subpath);
@@ -364,6 +364,54 @@ async function incrementalBuild(): Promise<void> {
       } catch (error) {
         console.error(`[search-index] failed to index ${subpath}:`, error);
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 이동 후 색인 갱신
+// ---------------------------------------------------------------------------
+
+/**
+ * 파일/디렉터리 이동 후 검색 색인을 갱신한다.
+ * best-effort: 실패해도 이동 자체에 영향을 주지 않는다.
+ *
+ * @param oldSubpath 이동 전 MARKDOWN_ROOT 기준 상대 경로
+ * @param newSubpath 이동 후 MARKDOWN_ROOT 기준 상대 경로
+ * @param isDirectory 디렉터리 이동 여부
+ */
+export async function reindexAfterMove(
+  oldSubpath: string,
+  newSubpath: string,
+  isDirectory: boolean,
+): Promise<void> {
+  if (isDirectory) {
+    // 이전 접두사로 시작하는 모든 항목 제거
+    const d = ensureDb();
+    const rows = d
+      .prepare('SELECT subpath FROM docs_meta WHERE subpath LIKE ?')
+      .all(`${oldSubpath}/%`) as Array<{ subpath: string }>;
+
+    for (const row of rows) {
+      removeFromIndex(row.subpath);
+    }
+
+    // 새 위치의 모든 .md 파일 재색인
+    const root = path.resolve(getServerEnv().MARKDOWN_ROOT);
+    const newAbsPath = path.join(root, ...newSubpath.split('/'));
+    const files = await scanMarkdownFiles(newAbsPath);
+    for (const file of files) {
+      try {
+        await indexFile(file.subpath);
+      } catch (err) {
+        console.error(`[search-index] reindex after move failed for ${file.subpath}:`, err);
+      }
+    }
+  } else {
+    // 단일 파일 이동
+    removeFromIndex(oldSubpath);
+    if (newSubpath.endsWith('.md') || newSubpath.endsWith('.markdown')) {
+      await indexFile(newSubpath);
     }
   }
 }

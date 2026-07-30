@@ -94,6 +94,8 @@ export interface FileEntry {
   title?: string;
   /** 폴더 카드에 표시할 최근 수정 파일 요약 (최대 3개). type === 'folder'일 때만. */
   recentFiles?: { name: string; snippet?: string }[];
+  /** 새 파일이거나 마지막 읽은 이후 업데이트된 파일이면 true. */
+  unread?: boolean;
 }
 
 export interface FilesResponse {
@@ -249,4 +251,70 @@ export interface ShareNotifyRequest {
 export interface ShareNotifyResponse {
   ok: true;
   target: ShareTarget;
+}
+
+// ---------------------------------------------------------------------------
+// 폴더 생성 — POST /api/folder
+// ---------------------------------------------------------------------------
+
+export interface CreateFolderRequest {
+  /** 부모 폴더의 MARKDOWN_ROOT 기준 상대 경로. 빈 문자열이면 루트. */
+  parentPath: string;
+  /** 새 폴더 이름 (단일 세그먼트, 경로 구분자 불허). */
+  name: string;
+}
+
+export interface CreateFolderResponse {
+  ok: true;
+  /** 생성된 폴더의 MARKDOWN_ROOT 기준 상대 경로. */
+  subpath: string;
+  name: string;
+}
+
+// ---------------------------------------------------------------------------
+// 파일/폴더 이동 — POST /api/move
+// ---------------------------------------------------------------------------
+
+export interface MoveRequest {
+  /** 이동할 원본의 MARKDOWN_ROOT 기준 상대 경로. */
+  sourcePath: string;
+  /** 이동 대상 부모 폴더의 MARKDOWN_ROOT 기준 상대 경로. 빈 문자열이면 루트. */
+  destinationPath: string;
+}
+
+export interface MoveResponse {
+  ok: true;
+  /** 이동 후 새 MARKDOWN_ROOT 기준 상대 경로. */
+  newSubpath: string;
+  name: string;
+}
+
+// ---------------------------------------------------------------------------
+// 읽음 표시 — POST /api/mark-read
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// 디스크 사용량 — GET /api/disk-usage
+// ---------------------------------------------------------------------------
+
+export interface DiskUsageResponse {
+  /** 전체 디스크 용량 (bytes). */
+  total: number;
+  /** 사용 가능 용량 (bytes). */
+  free: number;
+  /** 사용 중인 용량 (bytes). */
+  used: number;
+}
+
+// ---------------------------------------------------------------------------
+// 읽음 표시 — POST /api/mark-read
+// ---------------------------------------------------------------------------
+
+export interface MarkReadRequest {
+  /** 읽음 처리할 파일의 MARKDOWN_ROOT 기준 상대 경로. */
+  path: string;
+}
+
+export interface MarkReadResponse {
+  ok: true;
 }

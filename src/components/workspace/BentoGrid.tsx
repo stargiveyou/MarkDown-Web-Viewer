@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, FileText, File, ChevronRight, History, Download } from 'lucide-react';
+import { Folder, FileText, File, ChevronRight, History, Download, FolderInput } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import type { FileEntry, FileVersion, FileVersionsResponse } from '@/types/api';
 
@@ -17,6 +17,7 @@ export interface BentoGridProps {
   entries: FileEntry[];
   onFolderClick: (subpath: string) => void;
   onFileClick: (entry: FileEntry) => void;
+  onMoveClick?: (entry: FileEntry) => void;
 }
 
 /** 수정일을 상대 시간으로 표시 */
@@ -42,7 +43,7 @@ function formatSize(bytes: number): string {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
-export function BentoGrid({ entries, onFolderClick, onFileClick }: BentoGridProps) {
+export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick }: BentoGridProps) {
   if (entries.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-slate-700 px-6 py-16 text-center">
@@ -62,13 +63,13 @@ export function BentoGrid({ entries, onFolderClick, onFileClick }: BentoGridProp
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {folders.map((entry, index) =>
         index === 0 ? (
-          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} />
+          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} />
         ) : (
-          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} />
+          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} />
         ),
       )}
       {files.map((entry) => (
-        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} />
+        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} onMoveClick={onMoveClick} />
       ))}
     </div>
   );
@@ -81,61 +82,79 @@ export function BentoGrid({ entries, onFolderClick, onFileClick }: BentoGridProp
 function FeaturedFolderCard({
   entry,
   onClick,
+  onMoveClick,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
+  onMoveClick?: (entry: FileEntry) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onClick(entry.subpath)}
-      className="group lg:col-span-2 flex flex-col rounded-3xl bg-slate-800 border border-amber-500/30 shadow-lg p-6 text-left transition-all hover:border-amber-500/60 hover:shadow-amber-500/5"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-amber-500/20 flex items-center justify-center">
-            <Folder className="h-5 w-5 text-amber-400" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-slate-100 group-hover:text-amber-400 transition-colors">
-              {entry.name}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {entry.fileCount !== undefined ? `${entry.fileCount}개 항목` : ''} · {formatRelativeTime(entry.mtime)}
-            </p>
-          </div>
-        </div>
-        <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
-      </div>
-
-      {/* 미리보기 박스 — 최근 파일 요약 */}
-      <div className="rounded-2xl bg-slate-900/90 border border-slate-700/50 p-4 space-y-2.5">
-        <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2">
-          {entry.name}
-        </p>
-        {entry.recentFiles && entry.recentFiles.length > 0 ? (
-          entry.recentFiles.map((file, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <FileText className="h-3.5 w-3.5 text-slate-600 mt-0.5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-slate-300 font-medium truncate">
-                  {file.name}
-                </p>
-                {file.snippet && (
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                    {file.snippet}
-                  </p>
-                )}
-              </div>
+    <div className="group relative lg:col-span-2 flex flex-col rounded-3xl bg-slate-800 border border-amber-500/30 shadow-lg text-left transition-all hover:border-amber-500/60 hover:shadow-amber-500/5">
+      <button
+        type="button"
+        onClick={() => onClick(entry.subpath)}
+        className="flex flex-col p-6 text-left w-full"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+              <Folder className="h-5 w-5 text-amber-400" />
             </div>
-          ))
-        ) : (
-          <p className="text-xs text-slate-500">
-            최근 수정된 문서를 확인하려면 클릭하세요
+            <div>
+              <h3 className="text-base font-semibold text-slate-100 group-hover:text-amber-400 transition-colors">
+                {entry.name}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {entry.fileCount !== undefined ? `${entry.fileCount}개 항목` : ''} · {formatRelativeTime(entry.mtime)}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
+        </div>
+
+        {/* 미리보기 박스 — 최근 파일 요약 */}
+        <div className="rounded-2xl bg-slate-900/90 border border-slate-700/50 p-4 space-y-2.5">
+          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2">
+            {entry.name}
           </p>
-        )}
-      </div>
-    </button>
+          {entry.recentFiles && entry.recentFiles.length > 0 ? (
+            entry.recentFiles.map((file, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <FileText className="h-3.5 w-3.5 text-slate-600 mt-0.5 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-slate-300 font-medium truncate">
+                    {file.name}
+                  </p>
+                  {file.snippet && (
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                      {file.snippet}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-slate-500">
+              최근 수정된 문서를 확인하려면 클릭하세요
+            </p>
+          )}
+        </div>
+      </button>
+
+      {/* 이동 버튼 */}
+      {onMoveClick && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            title="이동"
+          >
+            <FolderInput className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -146,49 +165,67 @@ function FeaturedFolderCard({
 function FolderCard({
   entry,
   onClick,
+  onMoveClick,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
+  onMoveClick?: (entry: FileEntry) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onClick(entry.subpath)}
-      className="group col-span-1 flex flex-col rounded-3xl bg-slate-800 border border-slate-700/80 p-5 text-left transition-all hover:border-slate-600 hover:shadow-md"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="h-9 w-9 rounded-xl bg-slate-700/50 flex items-center justify-center">
-          <Folder className="h-4.5 w-4.5 text-amber-400" />
+    <div className="group relative col-span-1 flex flex-col rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => onClick(entry.subpath)}
+        className="flex flex-col p-5 text-left w-full"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-9 w-9 rounded-xl bg-slate-700/50 flex items-center justify-center">
+            <Folder className="h-4.5 w-4.5 text-amber-400" />
+          </div>
+          <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
         </div>
-        <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
-      </div>
 
-      <h3 className="text-sm font-semibold text-slate-100 group-hover:text-amber-400 transition-colors truncate">
-        {entry.name}
-      </h3>
-      <div className="flex items-center gap-2 mt-1.5">
-        {entry.fileCount !== undefined && (
-          <span className="text-xs text-slate-500">{entry.fileCount}개 항목</span>
+        <h3 className="text-sm font-semibold text-slate-100 group-hover:text-amber-400 transition-colors truncate">
+          {entry.name}
+        </h3>
+        <div className="flex items-center gap-2 mt-1.5">
+          {entry.fileCount !== undefined && (
+            <span className="text-xs text-slate-500">{entry.fileCount}개 항목</span>
+          )}
+          <span className="text-xs text-slate-600">·</span>
+          <span className="text-xs text-slate-500">{formatRelativeTime(entry.mtime)}</span>
+        </div>
+
+        {/* 최근 파일 요약 */}
+        {entry.recentFiles && entry.recentFiles.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-700/50 space-y-1.5">
+            <p className="text-[10px] font-medium text-slate-600 uppercase tracking-wider">
+              {entry.name}
+            </p>
+            {entry.recentFiles.slice(0, 2).map((file, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <FileText className="h-3 w-3 text-slate-600 shrink-0" />
+                <span className="text-[11px] text-slate-400 truncate">{file.name}</span>
+              </div>
+            ))}
+          </div>
         )}
-        <span className="text-xs text-slate-600">·</span>
-        <span className="text-xs text-slate-500">{formatRelativeTime(entry.mtime)}</span>
-      </div>
+      </button>
 
-      {/* 최근 파일 요약 */}
-      {entry.recentFiles && entry.recentFiles.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-700/50 space-y-1.5">
-          <p className="text-[10px] font-medium text-slate-600 uppercase tracking-wider">
-            {entry.name}
-          </p>
-          {entry.recentFiles.slice(0, 2).map((file, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <FileText className="h-3 w-3 text-slate-600 shrink-0" />
-              <span className="text-[11px] text-slate-400 truncate">{file.name}</span>
-            </div>
-          ))}
+      {/* 이동 버튼 */}
+      {onMoveClick && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            title="이동"
+          >
+            <FolderInput className="h-3 w-3" />
+          </button>
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -199,12 +236,14 @@ function FolderCard({
 function FileCard({
   entry,
   onClick,
+  onMoveClick,
 }: {
   entry: FileEntry;
   onClick: (entry: FileEntry) => void;
+  onMoveClick?: (entry: FileEntry) => void;
 }) {
   const isMarkdown = entry.type === 'markdown';
-  const isImage = entry.type === 'image';
+  const isUnread = entry.unread === true;
 
   const [versionOpen, setVersionOpen] = useState(false);
   const [versions, setVersions] = useState<FileVersion[]>([]);
@@ -248,7 +287,14 @@ function FileCard({
   }, [versionOpen]);
 
   return (
-    <div className="group relative col-span-1 flex flex-col overflow-visible rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md">
+    <div className={`group relative col-span-1 flex flex-col overflow-visible rounded-3xl bg-slate-800 border text-left transition-all hover:shadow-md ${isUnread ? 'border-amber-500/50 hover:border-amber-500/80' : 'border-slate-700/80 hover:border-slate-600'}`}>
+      {/* Unread 배지 */}
+      {isUnread && (
+        <div className="absolute -top-1.5 -left-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-bold text-slate-900 shadow-lg shadow-amber-500/30">
+          !
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => onClick(entry)}
@@ -305,8 +351,18 @@ function FileCard({
         </div>
       </button>
 
-      {/* 버전 히스토리 버튼 */}
-      <div className="absolute top-2 right-2 z-10" ref={dropdownRef}>
+      {/* 액션 버튼 (이동 + 버전 히스토리) */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1" ref={dropdownRef}>
+        {onMoveClick && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            title="이동"
+          >
+            <FolderInput className="h-3 w-3" />
+          </button>
+        )}
         <button
           type="button"
           onClick={handleVersionToggle}

@@ -31,6 +31,7 @@ import {
   resolveUnderRoot,
   toSubpath,
 } from '@/lib/path-safety';
+import { getUnreadSubpaths } from '@/lib/read-tracker';
 import type { FileEntry, FilesResponse, SortKey } from '@/types/api';
 
 export const runtime = 'nodejs';
@@ -262,6 +263,17 @@ export async function GET(request: Request): Promise<NextResponse> {
           return 0;
       }
     });
+
+    // --- unread 판정 (파일만, 폴더 제외) ---
+    const fileEntries = filteredEntries
+      .filter((e) => e.type !== 'folder')
+      .map((e) => ({ subpath: e.subpath, mtime: e.mtime }));
+    const unreadSet = getUnreadSubpaths(fileEntries);
+    for (const entry of filteredEntries) {
+      if (entry.type !== 'folder' && unreadSet.has(entry.subpath)) {
+        entry.unread = true;
+      }
+    }
 
     // --- breadcrumb 생성 ---
     const breadcrumb =

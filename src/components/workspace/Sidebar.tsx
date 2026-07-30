@@ -9,9 +9,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronRight, Folder, Home, Server } from 'lucide-react';
+import { ChevronRight, Folder, HardDrive, Home, Server } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
-import type { FilesResponse } from '@/types/api';
+import type { DiskUsageResponse, FilesResponse } from '@/types/api';
 
 export interface SidebarProps {
   /** 루트 폴더 목록 (이름 배열) */
@@ -142,6 +142,14 @@ function FolderTreeItem({
   );
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const val = bytes / Math.pow(1024, i);
+  return `${val < 10 ? val.toFixed(1) : Math.round(val)} ${units[i]}`;
+}
+
 export function Sidebar({
   folders,
   currentPath,
@@ -150,6 +158,16 @@ export function Sidebar({
   onLogout,
   loggingOut,
 }: SidebarProps) {
+  const [disk, setDisk] = useState<DiskUsageResponse | null>(null);
+
+  useEffect(() => {
+    apiFetch<DiskUsageResponse>('/api/disk-usage')
+      .then(setDisk)
+      .catch(() => {});
+  }, []);
+
+  const usedPercent = disk ? Math.round((disk.used / disk.total) * 100) : 0;
+
   return (
     <aside className="hidden md:flex w-64 bg-slate-950 border-r border-slate-800 h-screen sticky top-0 p-5 flex-col justify-between">
       {/* 상단: 브랜드 + 탐색 */}
@@ -201,13 +219,40 @@ export function Sidebar({
 
       {/* 하단: 서버 상태 + 로그아웃 */}
       <div className="flex flex-col gap-3">
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-3">
-          <div className="flex items-center gap-2 mb-1.5">
+        <div className="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
             <Server className="h-3.5 w-3.5 text-emerald-400" />
             <span className="text-[11px] font-medium text-slate-300">Server Status</span>
           </div>
-          <p className="text-[11px] text-slate-500">Mac mini</p>
-          <p className="text-[11px] text-slate-500 font-mono">~/MarkdownDocs</p>
+          <p className="text-[11px] text-slate-500">Mac mini · ~/MarkdownDocs</p>
+
+          {/* 디스크 사용량 */}
+          {disk && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <HardDrive className="h-3 w-3 text-slate-500" />
+                <span className="text-[10px] text-slate-400">
+                  {formatBytes(disk.used)} / {formatBytes(disk.total)}
+                </span>
+                <span className="text-[10px] text-slate-600">({usedPercent}%)</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    usedPercent >= 90
+                      ? 'bg-red-500'
+                      : usedPercent >= 70
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${usedPercent}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-600">
+                {formatBytes(disk.free)} 남음
+              </p>
+            </div>
+          )}
         </div>
 
         <button
