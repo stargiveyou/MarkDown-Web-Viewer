@@ -26,6 +26,7 @@ import { ArrowLeft, Download, Save, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
 import { ConflictWarning } from '@/components/workspace/ConflictWarning';
+import { MermaidBlock } from '@/components/workspace/MermaidBlock';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import type { FileContentResponse, SaveFileRequest, SaveFileResponse } from '@/types/api';
 
@@ -332,6 +333,21 @@ function EditorPageInner() {
                 remarkPlugins={[remarkFrontmatter, remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
+                  code: ({ className, children, ...rest }) => {
+                    const match = /language-mermaid/.exec(className || '');
+                    if (match) {
+                      const code = String(children).replace(/\n$/, '');
+                      return <MermaidBlock code={code} />;
+                    }
+                    return <code className={className} {...rest}>{children}</code>;
+                  },
+                  pre: ({ children }) => {
+                    const child = children as React.ReactElement<{ className?: string }>;
+                    if (child?.props?.className?.includes('language-mermaid')) {
+                      return <>{children}</>;
+                    }
+                    return <pre>{children}</pre>;
+                  },
                   img: ({ src, alt, ...rest }) => {
                     if (!src || typeof src !== 'string') return null;
                     const resolvedSrc = resolveImageSrc(src, path);

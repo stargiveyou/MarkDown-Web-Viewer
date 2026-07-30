@@ -27,6 +27,7 @@
     "better-sqlite3": "^13.0.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^1.26.0",
+    "mermaid": "^11.16.0",
     "monaco-editor": "^0.52.2",
     "next": "16.2.11",
     "react": "19.2.4",

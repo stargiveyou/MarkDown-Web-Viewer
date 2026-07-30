@@ -19,6 +19,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
+import { MermaidBlock } from '@/components/workspace/MermaidBlock';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import type { FileContentResponse } from '@/types/api';
 
@@ -190,6 +191,22 @@ function ViewerPageInner() {
               remarkPlugins={[remarkFrontmatter, remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
               components={{
+                code: ({ className, children, ...rest }) => {
+                  const match = /language-mermaid/.exec(className || '');
+                  if (match) {
+                    const code = String(children).replace(/\n$/, '');
+                    return <MermaidBlock code={code} />;
+                  }
+                  return <code className={className} {...rest}>{children}</code>;
+                },
+                pre: ({ children }) => {
+                  // mermaid 블록이면 <pre> 래퍼를 제거한다
+                  const child = children as React.ReactElement<{ className?: string }>;
+                  if (child?.props?.className?.includes('language-mermaid')) {
+                    return <>{children}</>;
+                  }
+                  return <pre>{children}</pre>;
+                },
                 img: ({ src, alt, ...rest }) => {
                   if (!src || typeof src !== 'string') return null;
                   const resolvedSrc = resolveImageSrc(src, path);
