@@ -20,8 +20,9 @@ import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { Loader2, Plus, FolderPlus } from 'lucide-react';
+import { Loader2, Plus, FolderPlus, AlertTriangle } from 'lucide-react';
 import type {
+  DeleteResponse,
   FileEntry,
   FilesResponse,
   SearchResult,
@@ -58,6 +59,8 @@ function WorkspacePageInner() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const [entries, setEntries] = useState<FileEntry[]>([]);
@@ -154,6 +157,35 @@ function WorkspacePageInner() {
     setRefreshKey((k) => k + 1);
     setMoveTarget(null);
   }, []);
+
+  const handleDeleteClick = useCallback((entry: FileEntry) => {
+    setDeleteTarget(entry);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+
+    try {
+      await apiFetch<DeleteResponse>(
+        `/api/files?path=${encodeURIComponent(deleteTarget.subpath)}`,
+        { method: 'DELETE' },
+      );
+      emitToast({
+        message: `"${deleteTarget.name}" 삭제 완료`,
+        variant: 'success',
+      });
+      setRefreshKey((k) => k + 1);
+      setDeleteTarget(null);
+    } catch (caught) {
+      const err = toApiRequestError(caught);
+      if (err.code !== 401) {
+        emitToast({ message: err.message, variant: 'error' });
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, deleting]);
 
   const handleRetry = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -376,6 +408,7 @@ function WorkspacePageInner() {
                   onFolderClick={handleFolderClick}
                   onFileClick={handleFileClick}
                   onMoveClick={handleMoveClick}
+                  onDeleteClick={handleDeleteClick}
                 />
               )}
             </>
@@ -403,6 +436,52 @@ function WorkspacePageInner() {
         entry={moveTarget}
         onMoved={handleMoved}
       />
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => { if (!deleting) setDeleteTarget(null); }}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-100">삭제 확인</h2>
+                <p className="text-xs text-slate-500">이 작업은 되돌릴 수 없습니다</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300 mb-1">
+              <span className="font-medium text-slate-100">&ldquo;{deleteTarget.name}&rdquo;</span>
+              {deleteTarget.type === 'folder' ? '  폴더와 하위 모든 파일을' : ' 파일을'} 영구적으로 삭제합니다.
+            </p>
+            <p className="text-xs text-slate-500 mb-6">
+              디스크에서 완전히 제거되며 복구할 수 없습니다.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

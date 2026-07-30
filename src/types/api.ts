@@ -318,3 +318,14 @@ export interface MarkReadRequest {
 export interface MarkReadResponse {
   ok: true;
 }
+
+// ---------------------------------------------------------------------------
+// 파일/폴더 삭제 — DELETE /api/files?path=
+// ---------------------------------------------------------------------------
+
+export interface DeleteResponse {
+  ok: true;
+  /** 삭제된 항목의 MARKDOWN_ROOT 기준 상대 경로. */
+  subpath: string;
+  name: string;
+}

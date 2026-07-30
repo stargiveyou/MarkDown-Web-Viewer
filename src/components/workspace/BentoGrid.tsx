@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, FileText, File, ChevronRight, History, Download, FolderInput } from 'lucide-react';
+import { Folder, FileText, File, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import type { FileEntry, FileVersion, FileVersionsResponse } from '@/types/api';
 
@@ -18,6 +18,7 @@ export interface BentoGridProps {
   onFolderClick: (subpath: string) => void;
   onFileClick: (entry: FileEntry) => void;
   onMoveClick?: (entry: FileEntry) => void;
+  onDeleteClick?: (entry: FileEntry) => void;
 }
 
 /** 수정일을 상대 시간으로 표시 */
@@ -43,7 +44,7 @@ function formatSize(bytes: number): string {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
-export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick }: BentoGridProps) {
+export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick, onDeleteClick }: BentoGridProps) {
   if (entries.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-slate-700 px-6 py-16 text-center">
@@ -63,13 +64,13 @@ export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick }: 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {folders.map((entry, index) =>
         index === 0 ? (
-          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} />
+          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
         ) : (
-          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} />
+          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
         ),
       )}
       {files.map((entry) => (
-        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} onMoveClick={onMoveClick} />
+        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
       ))}
     </div>
   );
@@ -83,10 +84,12 @@ function FeaturedFolderCard({
   entry,
   onClick,
   onMoveClick,
+  onDeleteClick,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
   onMoveClick?: (entry: FileEntry) => void;
+  onDeleteClick?: (entry: FileEntry) => void;
 }) {
   return (
     <div className="group relative lg:col-span-2 flex flex-col rounded-3xl bg-slate-800 border border-amber-500/30 shadow-lg text-left transition-all hover:border-amber-500/60 hover:shadow-amber-500/5">
@@ -141,9 +144,9 @@ function FeaturedFolderCard({
         </div>
       </button>
 
-      {/* 이동 버튼 */}
-      {onMoveClick && (
-        <div className="absolute top-2 right-2 z-10">
+      {/* 액션 버튼 (이동 + 삭제) */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {onMoveClick && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
@@ -152,8 +155,18 @@ function FeaturedFolderCard({
           >
             <FolderInput className="h-3 w-3" />
           </button>
-        </div>
-      )}
+        )}
+        {onDeleteClick && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
+            title="삭제"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -166,10 +179,12 @@ function FolderCard({
   entry,
   onClick,
   onMoveClick,
+  onDeleteClick,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
   onMoveClick?: (entry: FileEntry) => void;
+  onDeleteClick?: (entry: FileEntry) => void;
 }) {
   return (
     <div className="group relative col-span-1 flex flex-col rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md">
@@ -212,9 +227,9 @@ function FolderCard({
         )}
       </button>
 
-      {/* 이동 버튼 */}
-      {onMoveClick && (
-        <div className="absolute top-2 right-2 z-10">
+      {/* 액션 버튼 (이동 + 삭제) */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {onMoveClick && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
@@ -223,8 +238,18 @@ function FolderCard({
           >
             <FolderInput className="h-3 w-3" />
           </button>
-        </div>
-      )}
+        )}
+        {onDeleteClick && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
+            title="삭제"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -237,10 +262,12 @@ function FileCard({
   entry,
   onClick,
   onMoveClick,
+  onDeleteClick,
 }: {
   entry: FileEntry;
   onClick: (entry: FileEntry) => void;
   onMoveClick?: (entry: FileEntry) => void;
+  onDeleteClick?: (entry: FileEntry) => void;
 }) {
   const isMarkdown = entry.type === 'markdown';
   const isUnread = entry.unread === true;
@@ -351,7 +378,7 @@ function FileCard({
         </div>
       </button>
 
-      {/* 액션 버튼 (이동 + 버전 히스토리) */}
+      {/* 액션 버튼 (이동 + 삭제 + 버전 히스토리) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1" ref={dropdownRef}>
         {onMoveClick && (
           <button
@@ -361,6 +388,16 @@ function FileCard({
             title="이동"
           >
             <FolderInput className="h-3 w-3" />
+          </button>
+        )}
+        {onDeleteClick && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
+            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
+            title="삭제"
+          >
+            <Trash2 className="h-3 w-3" />
           </button>
         )}
         <button

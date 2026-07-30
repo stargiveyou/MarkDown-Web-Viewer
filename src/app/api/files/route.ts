@@ -32,7 +32,8 @@ import {
   toSubpath,
 } from '@/lib/path-safety';
 import { getUnreadSubpaths } from '@/lib/read-tracker';
-import type { FileEntry, FilesResponse, SortKey } from '@/types/api';
+import { removeDirectoryFromIndex, removeFromIndex } from '@/lib/search-index';
+import type { DeleteResponse, FileEntry, FilesResponse, SortKey } from '@/types/api';
 
 export const runtime = 'nodejs';
 
@@ -289,5 +290,66 @@ export async function GET(request: Request): Promise<NextResponse> {
       return apiError(400, 'Invalid path.');
     }
     return internalError('files', error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/files?path= — 파일 또는 폴더를 디스크에서 삭제한다.
+// ---------------------------------------------------------------------------
+
+export async function DELETE(request: Request): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  const userPath = searchParams.get('path') ?? '';
+
+  if (!userPath || userPath.trim() === '') {
+    return apiError(400, 'path is required.');
+  }
+
+  try {
+    // --- 경로 검증 (보안 불변식 2) ---
+    const absolutePath = resolveUnderRoot(userPath);
+    await assertRealPathUnderRoot(absolutePath);
+
+    // 존재 확인
+    let stat;
+    try {
+      stat = await fs.stat(absolutePath);
+    } catch {
+      return apiError(400, 'Path not found.');
+    }
+
+    const isDirectory = stat.isDirectory();
+    const name = path.basename(absolutePath);
+    const subpath = toSubpath(absolutePath);
+
+    // --- 삭제 수행 ---
+    if (isDirectory) {
+      await fs.rm(absolutePath, { recursive: true, force: true });
+
+      // 검색 색인에서 해당 디렉터리 하위 모든 항목 일괄 제거 (best-effort)
+      try {
+        removeDirectoryFromIndex(subpath);
+      } catch (indexError) {
+        console.error('[files:delete] index cleanup failed:', indexError);
+      }
+    } else {
+      await fs.rm(absolutePath);
+
+      // 검색 색인에서 제거 (best-effort)
+      try {
+        removeFromIndex(subpath);
+      } catch (indexError) {
+        console.error('[files:delete] index cleanup failed:', indexError);
+      }
+    }
+
+    const response: DeleteResponse = { ok: true, subpath, name };
+    return NextResponse.json(response);
+  } catch (error) {
+    if (error instanceof PathSafetyError) {
+      console.error('[files:delete] path rejected:', error.message);
+      return apiError(400, 'Invalid path.');
+    }
+    return internalError('files:delete', error);
   }
 }

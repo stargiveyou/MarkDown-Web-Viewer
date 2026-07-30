@@ -211,6 +211,26 @@ export function removeFromIndex(subpath: string): void {
   })();
 }
 
+/**
+ * 주어진 디렉터리 접두사 하위의 모든 색인 항목을 일괄 제거한다.
+ * 디렉터리 삭제 시 호출된다.
+ */
+export function removeDirectoryFromIndex(dirSubpath: string): void {
+  const d = ensureDb();
+  d.transaction(() => {
+    const rows = d
+      .prepare('SELECT subpath FROM docs_meta WHERE subpath LIKE ?')
+      .all(`${dirSubpath}/%`) as Array<{ subpath: string }>;
+    for (const row of rows) {
+      d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(row.subpath);
+      d.prepare('DELETE FROM docs_meta WHERE subpath = ?').run(row.subpath);
+    }
+    // 디렉터리 자체도 제거
+    d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(dirSubpath);
+    d.prepare('DELETE FROM docs_meta WHERE subpath = ?').run(dirSubpath);
+  })();
+}
+
 // ---------------------------------------------------------------------------
 // 검색
 // ---------------------------------------------------------------------------
