@@ -50,12 +50,12 @@ function FolderTreeItem({
   const isActive = currentPath === folder.subpath;
   const isAncestor = currentPath.startsWith(folder.subpath + '/');
 
-  // 현재 경로가 이 폴더의 하위에 있으면 자동 펼치기
-  useEffect(() => {
-    if (isAncestor && !expanded) {
-      setExpanded(true);
-    }
-  }, [isAncestor, expanded]);
+  // 현재 경로가 이 폴더의 하위로 바뀌면 자동 펼치기 (렌더 중 상태 조정 패턴)
+  const [prevIsAncestor, setPrevIsAncestor] = useState(isAncestor);
+  if (isAncestor !== prevIsAncestor) {
+    setPrevIsAncestor(isAncestor);
+    if (isAncestor) setExpanded(true);
+  }
 
   // 마운트 시 서브폴더 존재 여부를 미리 로드 (chevron 표시 판단용)
   useEffect(() => {
