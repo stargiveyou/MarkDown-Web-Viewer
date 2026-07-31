@@ -16,11 +16,13 @@ import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeSlug from 'rehype-slug';
 import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
 import { MermaidBlock } from '@/components/workspace/MermaidBlock';
 import { ShareModal } from '@/components/workspace/ShareModal';
+import { TocSidebar } from '@/components/workspace/TocSidebar';
 import type { FileContentResponse } from '@/types/api';
 
 import 'highlight.js/styles/github-dark.css';
@@ -162,7 +164,8 @@ function ViewerPageInner() {
       </header>
 
       {/* 본문 */}
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 gap-10 px-6 py-10 xl:max-w-6xl">
+        <div className="min-w-0 flex-1">
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
@@ -186,10 +189,10 @@ function ViewerPageInner() {
         )}
 
         {!loading && !error && (
-          <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md">
+          <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20">
             <Markdown
               remarkPlugins={[remarkFrontmatter, remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
+              rehypePlugins={[rehypeSlug, rehypeHighlight]}
               components={{
                 code: ({ className, children, ...rest }) => {
                   const match = /language-mermaid/.exec(className || '');
@@ -226,6 +229,10 @@ function ViewerPageInner() {
             </Markdown>
           </article>
         )}
+        </div>
+
+        {/* 목차 사이드바 (xl 이상) */}
+        {!loading && !error && <TocSidebar content={content} />}
       </main>
 
       {/* 공유 모달 */}
