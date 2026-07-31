@@ -165,6 +165,9 @@ function ViewerPageInner() {
 
       {/* 본문 */}
       <main className="mx-auto flex w-full max-w-4xl flex-1 gap-10 px-6 py-10 xl:max-w-6xl">
+        {/* 목차 사이드바 (xl 이상) */}
+        {!loading && !error && <TocSidebar content={content} />}
+
         <div className="min-w-0 flex-1">
         {loading && (
           <div className="flex items-center justify-center py-16">
@@ -230,9 +233,6 @@ function ViewerPageInner() {
           </article>
         )}
         </div>
-
-        {/* 목차 사이드바 (xl 이상) */}
-        {!loading && !error && <TocSidebar content={content} />}
       </main>
 
       {/* 공유 모달 */}
