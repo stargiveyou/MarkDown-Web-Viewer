@@ -43,6 +43,12 @@ const MD_IMAGE_RE = /!\[[^\]]*\]\(([^)]+)\)/;
 /** 유효한 sort 키 집합. */
 const VALID_SORT_KEYS = new Set<SortKey>(['mtime', 'name', 'size', 'ctime']);
 
+/** 폴더 카드 미리보기에 싣는 문서 수. */
+const PREVIEW_FILE_MAX = 3;
+
+/** 미리보기 후보로 읽어보는 최대 파일 수 (중복 제목을 건너뛸 여유분 포함). */
+const PREVIEW_SCAN_MAX = 8;
+
 /**
  * 마크다운 본문에서 첫 번째 이미지 참조 경로를 추출한다.
  * 상대 경로는 마크다운 파일의 디렉터리 기준으로 해석한다.
@@ -136,7 +142,11 @@ export async function GET(request: Request): Promise<NextResponse> {
         // 폴더: 숨김 파일을 제외한 직접 하위 항목 수 + 최근 마크다운 요약
         try {
           const children = await fs.readdir(entryPath);
-          const visibleChildren = children.filter((c) => !c.startsWith('.'));
+          // 목록과 동일한 가시성 규칙을 적용한다 — 버전 백업(name_YYYYMMDD-HHmmss.ext)을
+          // 빼지 않으면 같은 문서의 옛 버전이 미리보기에 중복 표시되고 항목 수도 부풀려진다.
+          const visibleChildren = children.filter(
+            (c) => !c.startsWith('.') && !isVersionBackup(c),
+          );
           entry.fileCount = visibleChildren.length;
 
           // 최근 수정된 마크다운 파일 최대 3개의 이름+요약 수집
@@ -157,23 +167,37 @@ export async function GET(request: Request): Promise<NextResponse> {
             );
             const sorted = mdStats
               .filter((s): s is NonNullable<typeof s> => s !== null)
-              .sort((a, b) => b.mtimeMs - a.mtimeMs)
-              .slice(0, 3);
+              .sort((a, b) => b.mtimeMs - a.mtimeMs);
 
+            // 미리보기에는 frontmatter title을 싣기 때문에, 제목이 같은 사본이 여러 개면
+            // 화면에는 똑같은 줄이 반복된다. 제목 기준으로 한 번만 싣되,
+            // 후보를 더 훑느라 읽기가 늘지 않도록 PREVIEW_SCAN_MAX로 묶는다.
             const recentFiles: { name: string; snippet?: string }[] = [];
-            for (const { name: mdName } of sorted) {
+            const seenTitles = new Set<string>();
+            for (const { name: mdName } of sorted.slice(0, PREVIEW_SCAN_MAX)) {
+              if (recentFiles.length >= PREVIEW_FILE_MAX) break;
+
+              const fallbackTitle = mdName.replace(/\.(md|markdown)$/, '');
+              let title = fallbackTitle;
+              let snippet = '';
               try {
                 const raw = await fs.readFile(path.join(entryPath, mdName), 'utf8');
                 const parsed = matter(raw);
-                const title =
-                  typeof parsed.data.title === 'string' && parsed.data.title.trim() !== ''
-                    ? parsed.data.title.trim()
-                    : mdName.replace(/\.(md|markdown)$/, '');
-                const snippet = extractSnippet(parsed.content, 80);
-                recentFiles.push({ name: title, snippet: snippet || undefined });
+                if (
+                  typeof parsed.data.title === 'string' &&
+                  parsed.data.title.trim() !== ''
+                ) {
+                  title = parsed.data.title.trim();
+                }
+                snippet = extractSnippet(parsed.content, 80);
               } catch {
-                recentFiles.push({ name: mdName.replace(/\.(md|markdown)$/, '') });
+                // 읽기 실패 시 파일명만으로 표시한다
               }
+
+              const key = title.toLowerCase();
+              if (seenTitles.has(key)) continue;
+              seenTitles.add(key);
+              recentFiles.push({ name: title, snippet: snippet || undefined });
             }
             if (recentFiles.length > 0) {
               entry.recentFiles = recentFiles;
