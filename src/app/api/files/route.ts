@@ -50,6 +50,16 @@ const PREVIEW_FILE_MAX = 3;
 const PREVIEW_SCAN_MAX = 8;
 
 /**
+ * 미리보기 중복 판정용 제목 키.
+ *
+ * macOS는 파일명·텍스트를 NFD(자모 분리)로 다루는 경로가 있어, 화면에는 똑같이 보이는
+ * 한글 제목이 코드포인트 단위로는 다를 수 있다. NFC로 모아준 뒤 공백까지 정규화한다.
+ */
+function titleKey(title: string): string {
+  return title.normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
  * 마크다운 본문에서 첫 번째 이미지 참조 경로를 추출한다.
  * 상대 경로는 마크다운 파일의 디렉터리 기준으로 해석한다.
  */
@@ -194,7 +204,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 // 읽기 실패 시 파일명만으로 표시한다
               }
 
-              const key = title.toLowerCase();
+              const key = titleKey(title);
               if (seenTitles.has(key)) continue;
               seenTitles.add(key);
               recentFiles.push({ name: title, snippet: snippet || undefined });
