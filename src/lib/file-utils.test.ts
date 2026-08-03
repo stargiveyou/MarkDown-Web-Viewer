@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildThumbnailUrl, classifyEntry, extractSnippet, isThumbnailable } from './file-utils';
+import {
+  buildThumbnailUrl,
+  classifyEntry,
+  extractSnippet,
+  isServableImage,
+  isSvg,
+  isThumbnailable,
+} from './file-utils';
 
 // ---------------------------------------------------------------------------
 // classifyEntry
@@ -60,6 +67,36 @@ describe('isThumbnailable', () => {
   it('returns false for non-image files', () => {
     expect(isThumbnailable('doc.md')).toBe(false);
     expect(isThumbnailable('data.json')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isSvg / isServableImage
+// ---------------------------------------------------------------------------
+
+describe('isSvg', () => {
+  it('returns true for .svg regardless of case', () => {
+    expect(isSvg('diagram.svg')).toBe(true);
+    expect(isSvg('DIAGRAM.SVG')).toBe(true);
+  });
+
+  it('returns false for raster images and other files', () => {
+    expect(isSvg('photo.png')).toBe(false);
+    expect(isSvg('doc.md')).toBe(false);
+    expect(isSvg('svg')).toBe(false);
+  });
+});
+
+describe('isServableImage', () => {
+  it('covers both raster thumbnails and SVG pass-through', () => {
+    expect(isServableImage('photo.png')).toBe(true);
+    expect(isServableImage('photo.webp')).toBe(true);
+    expect(isServableImage('diagram.svg')).toBe(true);
+  });
+
+  it('returns false for non-image files', () => {
+    expect(isServableImage('doc.md')).toBe(false);
+    expect(isServableImage('archive.zip')).toBe(false);
   });
 });
 

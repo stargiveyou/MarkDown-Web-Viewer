@@ -21,6 +21,7 @@ import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
 import { MermaidBlock } from '@/components/workspace/MermaidBlock';
+import { ZoomableImage, isSvgSource } from '@/components/workspace/SvgViewer';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import { TocSidebar } from '@/components/workspace/TocSidebar';
 import type { FileContentResponse } from '@/types/api';
@@ -216,6 +217,12 @@ function ViewerPageInner() {
                 img: ({ src, alt, ...rest }) => {
                   if (!src || typeof src !== 'string') return null;
                   const resolvedSrc = resolveImageSrc(src, path);
+
+                  // SVG는 확대해도 깨지지 않으므로 클릭하면 확대 뷰어로 연다.
+                  if (isSvgSource(src)) {
+                    return <ZoomableImage src={resolvedSrc} alt={alt || ''} />;
+                  }
+
                   return (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

@@ -22,7 +22,7 @@ import {
   buildThumbnailUrl,
   classifyEntry,
   extractSnippet,
-  isThumbnailable,
+  isServableImage,
   isVersionBackup,
 } from '@/lib/file-utils';
 import {
@@ -238,7 +238,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           // 마크다운 본문에서 첫 이미지를 찾아 coverThumbUrl 생성
           const dirSubpath = toSubpath(absoluteDir);
           const firstImage = findFirstImagePath(parsed.content, dirSubpath);
-          if (firstImage && isThumbnailable(firstImage)) {
+          if (firstImage && isServableImage(firstImage)) {
             entry.coverThumbUrl = buildThumbnailUrl(firstImage, 400);
           }
 
@@ -250,14 +250,14 @@ export async function GET(request: Request): Promise<NextResponse> {
               coverPath = mdDirSubpath ? `${mdDirSubpath}/${coverPath}` : coverPath;
               coverPath = path.posix.normalize(coverPath);
             }
-            if (isThumbnailable(coverPath)) {
+            if (isServableImage(coverPath)) {
               entry.coverThumbUrl = buildThumbnailUrl(coverPath, 400);
             }
           }
         } catch {
           // frontmatter 파싱 실패 시 snippet/title/tags 없이 진행
         }
-      } else if (type === 'image' && isThumbnailable(dirent.name)) {
+      } else if (type === 'image' && isServableImage(dirent.name)) {
         // 이미지: 썸네일 URL 생성
         entry.coverThumbUrl = buildThumbnailUrl(subpath, 400);
       }

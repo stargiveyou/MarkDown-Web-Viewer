@@ -20,7 +20,7 @@ import sharp from 'sharp';
 
 import { apiError, internalError } from '@/lib/api-response';
 import { getServerEnv } from '@/lib/env';
-import { isThumbnailable } from '@/lib/file-utils';
+import { isServableImage, isSvg } from '@/lib/file-utils';
 import {
   PathSafetyError,
   assertRealPathUnderRoot,
@@ -32,6 +32,27 @@ export const runtime = 'nodejs';
 
 /** 최대 허용 폭(px). */
 const MAX_WIDTH = 1200;
+
+/** SVG 패스스루 크기 상한(2MB). 벡터 문서가 이보다 크면 브라우저 렌더도 실용적이지 않다. */
+const MAX_SVG_BYTES = 2 * 1024 * 1024;
+
+/**
+ * SVG는 리사이즈하지 않고 원본을 그대로 내보내므로, 문서 안의 스크립트가
+ * **앱 오리진에서 실행되지 못하도록** 응답 자체를 봉인한다 (보안 불변식 8의 연장).
+ *
+ * - `sandbox`: 직접 URL로 열어도 스크립트·폼·팝업이 죽는다
+ * - `script-src 'none'`: `<script>`/이벤트 핸들러 차단
+ * - `nosniff`: 다른 타입으로 해석되는 것을 막는다
+ *
+ * `<img>`로 삽입된 SVG는 원래도 스크립트가 돌지 않지만, 새 탭 직접 열기까지 방어한다.
+ */
+const SVG_SECURITY_HEADERS = {
+  'Content-Type': 'image/svg+xml; charset=utf-8',
+  'Content-Security-Policy':
+    "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; sandbox",
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'public, max-age=86400, immutable',
+} as const;
 
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -52,8 +73,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     return apiError(400, `Width must be an integer between 1 and ${MAX_WIDTH}.`);
   }
 
-  // --- 썸네일 가능 여부 ---
-  if (!isThumbnailable(userPath)) {
+  // --- 응답 가능한 이미지인지 (래스터 = 리사이즈, SVG = 패스스루) ---
+  if (!isServableImage(userPath)) {
     return apiError(400, 'Not a thumbnailable file.');
   }
 
@@ -72,6 +93,16 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     if (stat.isDirectory()) {
       return apiError(400, 'Not a file.');
+    }
+
+    // --- SVG: 벡터이므로 리사이즈·캐시 없이 원본을 그대로 내보낸다 ---
+    if (isSvg(userPath)) {
+      if (stat.size > MAX_SVG_BYTES) {
+        return apiError(413, 'SVG is too large to display.');
+      }
+
+      const data = await fs.readFile(absolutePath);
+      return new NextResponse(new Uint8Array(data), { headers: SVG_SECURITY_HEADERS });
     }
 
     const mtime = Math.round(stat.mtimeMs);

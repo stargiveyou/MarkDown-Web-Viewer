@@ -19,6 +19,7 @@ import { SearchBar } from '@/components/workspace/SearchBar';
 import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { UploadLogPanel } from '@/components/workspace/UploadLogPanel';
+import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspace/SvgViewer';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
 import { clearUploadLog, recordUploads, useUploadLog } from '@/lib/upload-log-store';
@@ -63,6 +64,7 @@ function WorkspacePageInner() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
+  const [svgTarget, setSvgTarget] = useState<FileEntry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -273,7 +275,12 @@ function WorkspacePageInner() {
     if (entry.type === 'markdown') {
       router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
     } else if (entry.type === 'image') {
-      window.open(`/api/thumbnail?path=${encodeURIComponent(entry.subpath)}&w=1200`, '_blank');
+      // SVG는 벡터라 확대해도 깨지지 않으므로 앱 안의 확대 뷰어로 연다.
+      if (isSvgSource(entry.name)) {
+        setSvgTarget(entry);
+      } else {
+        window.open(buildImageUrl(entry.subpath), '_blank');
+      }
     }
   }
 
@@ -453,6 +460,15 @@ function WorkspacePageInner() {
         currentPath={currentPath}
         onCreated={handleFolderCreated}
       />
+
+      {/* SVG 확대 뷰어 */}
+      {svgTarget && (
+        <SvgFileViewer
+          name={svgTarget.name}
+          subpath={svgTarget.subpath}
+          onClose={() => setSvgTarget(null)}
+        />
+      )}
 
       <MoveModal
         open={moveTarget !== null}

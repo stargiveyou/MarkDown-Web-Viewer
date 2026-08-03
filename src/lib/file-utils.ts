@@ -18,6 +18,9 @@ const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown']);
 /** sharp가 처리할 수 있는 래스터 이미지(SVG 제외). */
 const THUMBNAIL_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
 
+/** 벡터 이미지. 리사이즈 없이 원본을 그대로 내보낸다. */
+const SVG_EXTENSIONS = new Set(['svg']);
+
 function extOf(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
@@ -35,6 +38,19 @@ export function classifyEntry(name: string, isDirectory: boolean): EntryType {
 /** sharp 리사이즈가 가능한 래스터 이미지인지 확인한다. */
 export function isThumbnailable(name: string): boolean {
   return THUMBNAIL_EXTENSIONS.has(extOf(name));
+}
+
+/** SVG(벡터)인지 확인한다. 리사이즈 대신 원본 패스스루로 응답한다. */
+export function isSvg(name: string): boolean {
+  return SVG_EXTENSIONS.has(extOf(name));
+}
+
+/**
+ * `/api/thumbnail`이 응답할 수 있는 이미지인지 확인한다.
+ * 래스터는 webp로 리사이즈하고, SVG는 원본을 그대로 내보낸다.
+ */
+export function isServableImage(name: string): boolean {
+  return isThumbnailable(name) || isSvg(name);
 }
 
 // ---------------------------------------------------------------------------
