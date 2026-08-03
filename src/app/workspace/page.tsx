@@ -18,8 +18,11 @@ import { MoveModal } from '@/components/workspace/MoveModal';
 import { SearchBar } from '@/components/workspace/SearchBar';
 import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
+import { UploadLogPanel } from '@/components/workspace/UploadLogPanel';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
+import { clearUploadLog, recordUploads, useUploadLog } from '@/lib/upload-log-store';
+import type { UploadLogEntry } from '@/lib/upload-log';
 import { Loader2, Plus, FolderPlus, AlertTriangle } from 'lucide-react';
 import type {
   DeleteResponse,
@@ -29,6 +32,7 @@ import type {
   SortKey,
   TagCount,
   TagsResponse,
+  UploadedFileInfo,
 } from '@/types/api';
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -86,6 +90,9 @@ function WorkspacePageInner() {
   // 모바일 사이드바 토글
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // 우측 업로드 로그 (localStorage 외부 스토어 구독)
+  const uploadLog = useUploadLog();
+
   // 루트 폴더 목록 로드 (사이드바용)
   useEffect(() => {
     (async () => {
@@ -141,9 +148,19 @@ function WorkspacePageInner() {
     })();
   }, [refreshKey]);
 
-  const handleUploaded = useCallback(() => {
+  const handleUploaded = useCallback((files: UploadedFileInfo[]) => {
     setRefreshKey((k) => k + 1);
+    recordUploads(files, Date.now());
   }, []);
+
+  const handleUploadLogClick = useCallback(
+    (entry: UploadLogEntry) => {
+      const slash = entry.subpath.lastIndexOf('/');
+      const folder = slash === -1 ? '' : entry.subpath.slice(0, slash);
+      router.push(folder ? `/workspace?path=${encodeURIComponent(folder)}` : '/workspace');
+    },
+    [router],
+  );
 
   const handleFolderCreated = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -415,6 +432,13 @@ function WorkspacePageInner() {
           )}
         </main>
       </div>
+
+      {/* 우측 업로드 로그 패널 */}
+      <UploadLogPanel
+        entries={uploadLog}
+        onClear={clearUploadLog}
+        onEntryClick={handleUploadLogClick}
+      />
 
       <UploadModal
         open={uploadOpen}
