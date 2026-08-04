@@ -151,6 +151,23 @@ export async function PUT(request: Request): Promise<NextResponse> {
         await handle.close();
       }
 
+      // 기존 파일이 있으면 버전 백업(Update Log)으로 리네임
+      try {
+        const existingStat = await fs.stat(absolutePath);
+        if (existingStat.isFile()) {
+          const fileName = path.basename(absolutePath);
+          const ext = path.extname(fileName);
+          const base = fileName.slice(0, fileName.length - ext.length);
+          const timestamp = formatTimestamp(new Date(existingStat.mtimeMs));
+          const backupName = `${base}_${timestamp}${ext}`;
+          const backupPath = path.join(directory, backupName);
+          await fs.rename(absolutePath, backupPath);
+        }
+      } catch (err) {
+        // ENOENT = 기존 파일이 없는 경우이므로 정상 진행
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
+
       // rename으로 원자적 교체
       await fs.rename(tempPath, absolutePath);
     } catch (writeError) {
@@ -183,4 +200,13 @@ export async function PUT(request: Request): Promise<NextResponse> {
     }
     return internalError('file-content:PUT', error);
   }
+}
+
+/**
+ * 날짜 포맷: `YYYYMMDD-HHmmss` (로컬 시간 기준).
+ * 버전 백업 파일명에 사용한다.
+ */
+function formatTimestamp(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 }
