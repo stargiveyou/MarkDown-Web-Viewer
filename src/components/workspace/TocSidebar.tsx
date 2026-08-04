@@ -6,6 +6,7 @@
  * - rehype-slug와 동일한 github-slugger로 id를 생성하므로 앵커가 본문과 항상 일치한다.
  * - IntersectionObserver로 현재 화면에 보이는 섹션을 하이라이트한다(scroll spy).
  * - xl 미만 화면에서는 숨긴다 (본문 가독성 우선).
+ * - xl 이상에서는 화면 왼쪽 끝에 고정 레일로 붙어 본문 폭을 최대한 양보한다.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -77,8 +78,12 @@ export function TocSidebar({ content }: { content: string }) {
   const minLevel = Math.min(...items.map((item) => item.level));
 
   return (
-    <aside className="hidden w-56 shrink-0 xl:block" aria-label="목차">
-      <nav className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pb-6">
+    <aside
+      className="hidden w-64 shrink-0 border-r border-zinc-800 xl:block"
+      aria-label="목차"
+    >
+      {/* 헤더(3.5rem) 바로 아래에 붙는 좌측 레일. 본문과 독립적으로 스크롤한다. */}
+      <nav className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4 py-8">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           목차
         </p>

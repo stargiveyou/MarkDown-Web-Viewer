@@ -109,7 +109,7 @@ function ViewerPageInner() {
     <div className="flex flex-1 flex-col bg-zinc-950 font-sans text-zinc-300">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-3">
+        <div className="flex w-full items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -164,12 +164,12 @@ function ViewerPageInner() {
         </div>
       </header>
 
-      {/* 본문 */}
-      <main className="mx-auto flex w-full max-w-4xl flex-1 gap-10 px-6 py-10 xl:max-w-6xl">
+      {/* 본문 — 폭을 제한하지 않고 화면 전체를 쓴다. 목차는 왼쪽 끝 레일. */}
+      <main className="flex w-full flex-1">
         {/* 목차 사이드바 (xl 이상) */}
         {!loading && !error && <TocSidebar content={content} />}
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 px-8 py-10">
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
@@ -193,7 +193,7 @@ function ViewerPageInner() {
         )}
 
         {!loading && !error && (
-          <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20">
+          <article className="prose prose-invert prose-lg xl:prose-xl max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20 prose-pre:text-[0.85em] prose-table:text-[0.9em]">
             <Markdown
               remarkPlugins={[remarkFrontmatter, remarkGfm]}
               rehypePlugins={[rehypeSlug, rehypeHighlight]}
