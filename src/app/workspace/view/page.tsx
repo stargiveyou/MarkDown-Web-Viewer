@@ -105,6 +105,16 @@ function ViewerPageInner() {
   // 파일명 추출 (헤더 표시용)
   const fileName = path.substring(path.lastIndexOf('/') + 1) || path;
 
+  // 브라우저 탭 타이틀에 파일명을 붙인다 -- 여러 문서를 탭으로 열었을 때 구분용.
+  // 클라이언트 컴포넌트라 metadata export를 쓸 수 없어 document.title을 직접 갱신한다.
+  useEffect(() => {
+    if (!fileName) return;
+    document.title = `Husky Works MDs - ${fileName}`;
+    return () => {
+      document.title = 'Husky Works MDs';
+    };
+  }, [fileName]);
+
   return (
     <div className="flex flex-1 flex-col bg-zinc-950 font-sans text-zinc-300">
       {/* 헤더 */}
