@@ -15,6 +15,21 @@ import { ZoomPanViewer } from './ZoomPanViewer';
 
 let mermaidInitialized = false;
 
+/**
+ * 인라인 표시 배율. mermaid는 SVG 루트에 원본 폭을 `max-width`로 박아 넣는데,
+ * 그대로 두면 다이어그램(과 뷰어 높이)이 너무 작게 렌더된다.
+ * 폭 상한을 키우면 viewBox 비율에 따라 높이도 같이 커진다.
+ * (뷰포트 폭보다 커지는 경우는 ZoomPanViewer의 `[&_svg]:max-w-full`이 잘라 준다.)
+ */
+const INLINE_SCALE = 3;
+
+function scaleSvg(svg: string): string {
+  return svg.replace(
+    /max-width:\s*([\d.]+)px/,
+    (_, width) => `max-width: ${parseFloat(width) * INLINE_SCALE}px`,
+  );
+}
+
 async function ensureMermaid() {
   const mermaid = (await import('mermaid')).default;
   if (!mermaidInitialized) {
@@ -42,7 +57,7 @@ export function MermaidBlock({ code }: { code: string }) {
         const mermaid = await ensureMermaid();
         const rendered = await mermaid.render(`mermaid-${id}`, code.trim());
         if (cancelled) return;
-        setSvg(rendered.svg);
+        setSvg(scaleSvg(rendered.svg));
         setError(null);
       } catch (err) {
         if (!cancelled) {
