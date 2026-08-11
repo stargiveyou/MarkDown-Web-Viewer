@@ -71,7 +71,7 @@ function WorkspacePageInner() {
 
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
-  const [sort, setSort] = useState<SortKey>('name');
+  const [sort, setSort] = useState<SortKey>('ctime');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
