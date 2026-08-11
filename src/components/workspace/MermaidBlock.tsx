@@ -16,18 +16,30 @@ import { ZoomPanViewer } from './ZoomPanViewer';
 let mermaidInitialized = false;
 
 /**
- * 인라인 표시 배율. mermaid는 SVG 루트에 원본 폭을 `max-width`로 박아 넣는데,
- * 그대로 두면 다이어그램(과 뷰어 높이)이 너무 작게 렌더된다.
- * 폭 상한을 키우면 viewBox 비율에 따라 높이도 같이 커진다.
- * (뷰포트 폭보다 커지는 경우는 ZoomPanViewer의 `[&_svg]:max-w-full`이 잘라 준다.)
+ * 인라인 표시 배율. mermaid는 SVG를 원본 크기(`width="100%"` + `max-width: 원본폭`)로
+ * 돌려주는데, 그대로 두면 노드가 많은 다이어그램일수록 글자가 작게 렌더된다.
+ * viewBox에서 원본 폭을 읽어 명시적 픽셀 폭(원본 × 배율)을 지정한다 —
+ * max-width 상한만 키우는 방식은 가운데 정렬 flex 안에서 래퍼가 원본 폭으로
+ * 수축해 실제 표시 크기가 커지지 않는다.
+ * 높이는 `auto`라 viewBox 비율대로 따라 커지고, 뷰포트보다 넓어지면
+ * `max-width:100%`로 축소된다(세부는 확대·이동으로 본다).
  */
 const INLINE_SCALE = 3;
 
 function scaleSvg(svg: string): string {
-  return svg.replace(
-    /max-width:\s*([\d.]+)px/,
-    (_, width) => `max-width: ${parseFloat(width) * INLINE_SCALE}px`,
-  );
+  const headEnd = svg.indexOf('>');
+  if (headEnd === -1) return svg;
+
+  const head = svg.slice(0, headEnd);
+  const viewBox = head.match(/viewBox="([^"]+)"/);
+  const width = viewBox ? Number(viewBox[1].trim().split(/[\s,]+/)[2]) : NaN;
+  if (!width) return svg;
+
+  const sized = `style="max-width:100%;width:${Math.round(width * INLINE_SCALE)}px;height:auto;"`;
+  const newHead = /style="/.test(head)
+    ? head.replace(/style="[^"]*"/, sized)
+    : `${head} ${sized}`;
+  return newHead + svg.slice(headEnd);
 }
 
 async function ensureMermaid() {
@@ -89,8 +101,9 @@ export function MermaidBlock({ code }: { code: string }) {
       title="Mermaid 다이어그램"
       className="my-4 rounded-xl border border-zinc-800 bg-zinc-900/50"
     >
-      {/* mermaid는 securityLevel:'strict'로 렌더된 SVG를 돌려준다. */}
-      <div dangerouslySetInnerHTML={{ __html: svg }} />
+      {/* mermaid는 securityLevel:'strict'로 렌더된 SVG를 돌려준다.
+          w-full: scaleSvg의 max-width:100% 기준이 뷰포트 폭이 되도록 래퍼를 펼친다. */}
+      <div className="w-full [&_svg]:mx-auto" dangerouslySetInnerHTML={{ __html: svg }} />
     </ZoomPanViewer>
   );
 }
