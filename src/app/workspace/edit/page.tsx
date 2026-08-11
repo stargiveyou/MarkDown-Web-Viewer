@@ -22,6 +22,7 @@ import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeBeforeAfter from '@/lib/rehype-before-after';
 import { ArrowLeft, Download, Save, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
@@ -331,7 +332,7 @@ function EditorPageInner() {
             <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:shadow-md">
               <Markdown
                 remarkPlugins={[remarkFrontmatter, remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
+                rehypePlugins={[rehypeHighlight, rehypeBeforeAfter]}
                 components={{
                   code: ({ className, children, ...rest }) => {
                     const match = /language-mermaid/.exec(className || '');

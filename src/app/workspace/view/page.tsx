@@ -17,6 +17,7 @@ import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
+import rehypeBeforeAfter from '@/lib/rehype-before-after';
 import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
@@ -206,7 +207,7 @@ function ViewerPageInner() {
           <article className="prose prose-invert prose-lg xl:prose-xl max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20 prose-pre:text-[0.85em] prose-table:text-[0.9em]">
             <Markdown
               remarkPlugins={[remarkFrontmatter, remarkGfm]}
-              rehypePlugins={[rehypeSlug, rehypeHighlight]}
+              rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeBeforeAfter]}
               components={{
                 code: ({ className, children, ...rest }) => {
                   const match = /language-mermaid/.exec(className || '');
