@@ -32,7 +32,7 @@ export function Breadcrumb({ segments, onNavigate }: BreadcrumbProps) {
       <button
         type="button"
         onClick={() => onNavigate(-1)}
-        className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 rounded"
+        className="text-zinc-500 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-400 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 rounded"
       >
         Home
       </button>
@@ -50,7 +50,7 @@ export function Breadcrumb({ segments, onNavigate }: BreadcrumbProps) {
               <button
                 type="button"
                 onClick={() => onNavigate(index)}
-                className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 rounded truncate max-w-48"
+                className="text-zinc-500 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-400 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 rounded truncate max-w-48"
               >
                 {segment}
               </button>
