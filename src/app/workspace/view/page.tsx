@@ -10,7 +10,7 @@
  * - 모든 이미지는 <img> 태그로만 렌더한다 (D2-1: SVG XSS 방어).
  */
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MarkdownHooks as Markdown } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -47,6 +47,23 @@ function resolveImageSrc(src: string, filePath: string): string {
   const imagePath = dir ? `${dir}/${cleanSrc}` : cleanSrc;
 
   return `/api/thumbnail?path=${encodeURIComponent(imagePath)}&w=800`;
+}
+
+/**
+ * 마크다운에서 문서 제목을 추출한다 — frontmatter `title` > 첫 H1 순.
+ * 둘 다 없으면 null을 돌려주고 호출부가 파일명으로 폴백한다.
+ */
+function extractDocTitle(markdown: string): string | null {
+  const frontmatter = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (frontmatter) {
+    const title = frontmatter[1].match(/^title:\s*(['"]?)(.+?)\1\s*$/m);
+    if (title) return title[2].trim();
+  }
+
+  // 코드 블록 안의 `# 주석`을 H1로 오인하지 않도록 펜스 블록을 제거하고 찾는다.
+  const withoutCode = markdown.replace(/```[\s\S]*?```/g, '');
+  const h1 = withoutCode.match(/^#\s+(.+)$/m);
+  return h1 ? h1[1].trim() : null;
 }
 
 function ViewerPageInner() {
@@ -106,15 +123,22 @@ function ViewerPageInner() {
   // 파일명 추출 (헤더 표시용)
   const fileName = path.substring(path.lastIndexOf('/') + 1) || path;
 
-  // 브라우저 탭 타이틀에 파일명을 붙인다 -- 여러 문서를 탭으로 열었을 때 구분용.
+  // 브라우저 탭 타이틀에 문서 제목(frontmatter title > 첫 H1 > 파일명)을 붙인다
+  // -- 여러 문서를 탭으로 열었을 때 구분용.
   // 클라이언트 컴포넌트라 metadata export를 쓸 수 없어 document.title을 직접 갱신한다.
+  const docTitle = useMemo(
+    () => (content ? extractDocTitle(content) : null),
+    [content],
+  );
+
   useEffect(() => {
-    if (!fileName) return;
-    document.title = `Husky Works MDs - ${fileName}`;
+    const title = docTitle || fileName;
+    if (!title) return;
+    document.title = `Husky Works MDs - ${title}`;
     return () => {
       document.title = 'Husky Works MDs';
     };
-  }, [fileName]);
+  }, [docTitle, fileName]);
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-950 font-sans text-zinc-300">
