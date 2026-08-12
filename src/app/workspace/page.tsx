@@ -95,6 +95,16 @@ function WorkspacePageInner() {
   // 우측 업로드 로그 (localStorage 외부 스토어 구독)
   const uploadLog = useUploadLog();
 
+  // 브라우저 탭 타이틀에 현재 폴더명을 붙인다 — 뷰어의 파일명 표시와 같은 패턴.
+  // 루트에서는 기본 타이틀을 유지한다.
+  useEffect(() => {
+    const folderName = currentPath.split('/').filter(Boolean).pop();
+    document.title = folderName ? `Husky Works MDs - ${folderName}` : 'Husky Works MDs';
+    return () => {
+      document.title = 'Husky Works MDs';
+    };
+  }, [currentPath]);
+
   // 루트 폴더 목록 로드 (사이드바용)
   useEffect(() => {
     (async () => {
