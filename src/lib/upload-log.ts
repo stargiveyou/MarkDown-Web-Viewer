@@ -56,3 +56,63 @@ export function saveClearedBefore(at: number): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 날짜별 묶기 — 이력 창(UploadHistoryModal)에서 쓴다.
+// ---------------------------------------------------------------------------
+
+/** 하루치 업로드 묶음. */
+export interface UploadDayGroup {
+  /** 로컬 기준 날짜 키(`YYYY-MM-DD`). 같은 날 여부 판정과 React key로 쓴다. */
+  key: string;
+  /** 사람이 읽는 표기 — `오늘` / `어제` / `8/12 (월)` */
+  label: string;
+  entries: UploadHistoryEntry[];
+}
+
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 로컬 시간 기준 `YYYY-MM-DD`. UTC(toISOString)를 쓰면 밤 업로드가 다음 날로 밀린다. */
+export function dayKeyOf(at: number): string {
+  const date = new Date(at);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function labelOf(at: number, todayKey: string, yesterdayKey: string): string {
+  const key = dayKeyOf(at);
+  if (key === todayKey) return '오늘';
+  if (key === yesterdayKey) return '어제';
+
+  const date = new Date(at);
+  return `${date.getMonth() + 1}/${date.getDate()} (${WEEKDAYS[date.getDay()]})`;
+}
+
+/**
+ * 최신순 목록을 날짜별로 묶는다. 입력 순서를 그대로 유지하므로
+ * 날짜 묶음도, 묶음 안의 항목도 최신순이다.
+ *
+ * @param entries 최신순으로 정렬된 업로드 목록
+ * @param now     '오늘'/'어제' 판정 기준 시각(ms)
+ */
+export function groupUploadsByDay(
+  entries: UploadHistoryEntry[],
+  now: number,
+): UploadDayGroup[] {
+  const todayKey = dayKeyOf(now);
+  const yesterdayKey = dayKeyOf(now - 24 * 60 * 60 * 1000);
+
+  const groups: UploadDayGroup[] = [];
+  let current: UploadDayGroup | null = null;
+
+  for (const entry of entries) {
+    const key = dayKeyOf(entry.at);
+    if (!current || current.key !== key) {
+      current = { key, label: labelOf(entry.at, todayKey, yesterdayKey), entries: [] };
+      groups.push(current);
+    }
+    current.entries.push(entry);
+  }
+
+  return groups;
+}

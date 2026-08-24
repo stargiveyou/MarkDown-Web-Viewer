@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   UPLOAD_LOG_CLEARED_KEY,
+  groupUploadsByDay,
   loadClearedBefore,
   saveClearedBefore,
   visibleEntries,
@@ -82,5 +83,56 @@ describe('clear marker persistence', () => {
     store.set(UPLOAD_LOG_CLEARED_KEY, '-5');
 
     expect(loadClearedBefore()).toBe(0);
+  });
+});
+
+/** 로컬 시간 기준 epoch ms — 테스트가 실행 지역과 무관하게 같은 날짜를 가리키도록. */
+function at(y: number, m: number, d: number, h = 12, min = 0): number {
+  return new Date(y, m - 1, d, h, min).getTime();
+}
+
+describe('groupUploadsByDay', () => {
+  const now = at(2026, 8, 14, 18);
+
+  it('groups consecutive entries from the same day', () => {
+    const groups = groupUploadsByDay(
+      [
+        { ...entry('c', at(2026, 8, 14, 16)) },
+        { ...entry('b', at(2026, 8, 14, 9)) },
+        { ...entry('a', at(2026, 8, 13, 21)) },
+      ],
+      now,
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].entries.map((e) => e.id)).toEqual(['c', 'b']);
+    expect(groups[1].entries.map((e) => e.id)).toEqual(['a']);
+  });
+
+  it('labels today and yesterday', () => {
+    const groups = groupUploadsByDay(
+      [entry('c', at(2026, 8, 14, 16)), entry('b', at(2026, 8, 13, 9))],
+      now,
+    );
+
+    expect(groups.map((g) => g.label)).toEqual(['오늘', '어제']);
+  });
+
+  it('labels older days with month/day and weekday', () => {
+    // 2026-08-12는 수요일이다.
+    const [group] = groupUploadsByDay([entry('a', at(2026, 8, 12, 10))], now);
+
+    expect(group.label).toBe('8/12 (수)');
+  });
+
+  it('keeps a late-night upload on its local day', () => {
+    const [group] = groupUploadsByDay([entry('a', at(2026, 8, 14, 23, 50))], now);
+
+    expect(group.key).toBe('2026-08-14');
+    expect(group.label).toBe('오늘');
+  });
+
+  it('returns nothing for an empty log', () => {
+    expect(groupUploadsByDay([], now)).toEqual([]);
   });
 });

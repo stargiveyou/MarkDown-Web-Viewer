@@ -19,6 +19,7 @@ import { SearchBar } from '@/components/workspace/SearchBar';
 import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { UploadLogPanel } from '@/components/workspace/UploadLogPanel';
+import { UploadHistoryModal } from '@/components/workspace/UploadHistoryModal';
 import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspace/SvgViewer';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
@@ -61,6 +62,7 @@ function WorkspacePageInner() {
   const currentPath = searchParams.get('path') || '';
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
   const [svgTarget, setSvgTarget] = useState<FileEntry | null>(null);
@@ -455,6 +457,16 @@ function WorkspacePageInner() {
         entries={uploadLog}
         onClear={clearUploadLog}
         onEntryClick={handleUploadLogClick}
+        onOpenHistory={() => setHistoryOpen(true)}
+      />
+
+      <UploadHistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onEntryClick={(entry) => {
+          setHistoryOpen(false);
+          handleUploadLogClick(entry);
+        }}
       />
 
       <UploadModal

@@ -3,11 +3,16 @@
 /**
  * 우측 업로드 로그 패널 — 최근 업로드된 파일을 간략히 보여준다.
  *
- * 좌측 `Sidebar`와 짝을 이루는 고정 컬럼(lg+에서만 표시)이며,
- * "Clear" 버튼을 누르면 목록이 사라진다(로컬 표시용 기록만 지운다 — 파일은 그대로).
+ * 좌측 `Sidebar`와 짝을 이루는 고정 컬럼(lg+에서만 표시)이다.
+ * 목록의 원본은 서버 이력이라 웹 업로드와 API 직접 호출(curl 등)이 함께 나온다.
+ *
+ * 탭이 둘이다.
+ * - "최근": 최신 업로드를 그대로 보여준다. "Clear"는 이 표시만 지운다(파일·서버 이력은 그대로).
+ * - "날짜별": 날짜별 이력 창(`UploadHistoryModal`)을 연다 — 좁은 컬럼에 담기 어려운
+ *   정보량이라 패널 안에서 전환하지 않고 창으로 띄운다.
  */
 
-import { Trash2, UploadCloud } from 'lucide-react';
+import { CalendarDays, Trash2, UploadCloud } from 'lucide-react';
 import type { UploadLogEntry } from '@/lib/upload-log';
 
 export interface UploadLogPanelProps {
@@ -15,6 +20,8 @@ export interface UploadLogPanelProps {
   onClear: () => void;
   /** 항목 클릭 시 해당 파일이 있는 폴더로 이동 */
   onEntryClick?: (entry: UploadLogEntry) => void;
+  /** "날짜별" 탭 — 날짜별 이력 창을 연다. */
+  onOpenHistory: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -36,7 +43,12 @@ function folderOf(subpath: string): string {
   return slash === -1 ? '' : subpath.slice(0, slash);
 }
 
-export function UploadLogPanel({ entries, onClear, onEntryClick }: UploadLogPanelProps) {
+export function UploadLogPanel({
+  entries,
+  onClear,
+  onEntryClick,
+  onOpenHistory,
+}: UploadLogPanelProps) {
   return (
     <aside
       aria-label="업로드 로그"
@@ -58,6 +70,24 @@ export function UploadLogPanel({ entries, onClear, onEntryClick }: UploadLogPane
         >
           <Trash2 className="h-3 w-3" />
           Clear
+        </button>
+      </div>
+
+      {/* 탭 — "최근"은 이 패널, "날짜별"은 창을 연다(선택 상태를 남기지 않는다). */}
+      <div className="flex gap-1 rounded-xl border border-slate-800 bg-slate-900 p-0.5">
+        <span
+          aria-current="true"
+          className="flex-1 rounded-lg bg-slate-800 py-1 text-center text-[11px] font-semibold text-amber-400"
+        >
+          최근
+        </span>
+        <button
+          type="button"
+          onClick={onOpenHistory}
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+        >
+          <CalendarDays className="h-3 w-3" />
+          날짜별
         </button>
       </div>
 
