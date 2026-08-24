@@ -40,6 +40,7 @@ import {
 } from '@/lib/path-safety';
 import { checkRateLimit, rateLimitKeyFor } from '@/lib/rate-limit';
 import { indexFile } from '@/lib/search-index';
+import { recordUploadHistory } from '@/lib/upload-history';
 import { sendWebhook, type WebhookPayload } from '@/lib/webhook';
 import {
   UPLOAD_FIELD,
@@ -196,6 +197,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     ? sanitizeFolderPath(targetPathRaw)
     : '';
 
+  // 업로드 주체 — 웹 UI만 'web'을 보낸다. curl 등 API 직접 호출은 필드가 없으므로 'api'.
+  const source = form.get(UPLOAD_FIELD.client) === 'web' ? 'web' : 'api';
+
   const saved: UploadedFileInfo[] = [];
   // targetDir을 try 블록 밖에서도 사용해야 하므로(알림 페이로드) 바깥에 선언한다.
   let targetDir = '';
@@ -262,6 +266,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       return apiError(400, 'Invalid path.');
     }
     return internalError('upload', error);
+  }
+
+  // --- 업로드 이력 기록 (Upload Log) -----------------------------------------
+  // 웹/API 어느 경로로 올라왔든 서버에 남긴다 — 브라우저 로컬에만 쌓으면
+  // curl로 올린 파일이 Upload Log에 나타나지 않는다.
+  // 실패해도 업로드 자체는 성공이므로 삼킨다(보안 불변식 8 — 서버 로깅만).
+  try {
+    recordUploadHistory(saved, Date.now(), source);
+  } catch (historyError) {
+    console.error('[upload] history write failed:', historyError);
   }
 
   // --- 업로드 완료 알림 -- best-effort (D5-1, D5-4) ---------------------------

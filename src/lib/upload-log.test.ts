@@ -1,57 +1,86 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { appendUploadLog, UPLOAD_LOG_MAX, type UploadLogEntry } from './upload-log';
-import type { UploadedFileInfo } from '@/types/api';
+import {
+  UPLOAD_LOG_CLEARED_KEY,
+  loadClearedBefore,
+  saveClearedBefore,
+  visibleEntries,
+} from './upload-log';
+import type { UploadHistoryEntry } from '@/types/api';
 
-function file(name: string, subpath = name): UploadedFileInfo {
-  return { name, subpath, size: 1024, mtime: 0 };
+function entry(id: string, at: number): UploadHistoryEntry {
+  return { id, name: `${id}.md`, subpath: `${id}.md`, size: 1024, at, source: 'web' };
 }
 
-describe('appendUploadLog', () => {
-  it('puts the newest upload first', () => {
-    const first = appendUploadLog([], [file('a.md')], 1000);
-    const second = appendUploadLog(first, [file('b.md')], 2000);
+describe('visibleEntries', () => {
+  const log = [entry('c', 3000), entry('b', 2000), entry('a', 1000)];
 
-    expect(second.map((e) => e.name)).toEqual(['b.md', 'a.md']);
+  it('keeps every entry when nothing has been cleared', () => {
+    expect(visibleEntries(log, 0)).toBe(log);
   });
 
-  it('orders a multi-file batch with the last finished file on top', () => {
-    const log = appendUploadLog([], [file('a.md'), file('b.md'), file('c.md')], 1000);
-
-    expect(log.map((e) => e.name)).toEqual(['c.md', 'b.md', 'a.md']);
+  it('hides entries uploaded at or before the clear point', () => {
+    expect(visibleEntries(log, 2000).map((e) => e.id)).toEqual(['c']);
   });
 
-  it('keeps subpath, size and timestamp', () => {
-    const [entry] = appendUploadLog([], [file('a.md', 'Trip/a.md')], 1700);
-
-    expect(entry).toMatchObject({ name: 'a.md', subpath: 'Trip/a.md', size: 1024, at: 1700 });
+  it('hides everything when cleared after the newest upload', () => {
+    expect(visibleEntries(log, 9999)).toEqual([]);
   });
 
-  it('gives distinct ids to files uploaded in the same batch', () => {
-    const log = appendUploadLog([], [file('a.md'), file('b.md')], 1000);
+  it('shows uploads that arrive after the clear point', () => {
+    const afterClear = [entry('d', 5000), ...log];
 
-    expect(new Set(log.map((e) => e.id)).size).toBe(2);
+    expect(visibleEntries(afterClear, 4000).map((e) => e.id)).toEqual(['d']);
+  });
+});
+
+/** 테스트 환경은 node라 window가 없다 — localStorage만 흉내 내 붙인다. */
+function installFakeWindow(): Map<string, string> {
+  const store = new Map<string, string>();
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => void store.set(key, value),
+      },
+    },
   });
 
-  it('drops the oldest entries beyond the cap', () => {
-    const existing: UploadLogEntry[] = Array.from({ length: UPLOAD_LOG_MAX }, (_, i) => ({
-      id: `old-${i}`,
-      name: `old-${i}.md`,
-      subpath: `old-${i}.md`,
-      size: 10,
-      at: i,
-    }));
+  return store;
+}
 
-    const log = appendUploadLog(existing, [file('new.md')], 9999);
+describe('clear marker persistence', () => {
+  let store: Map<string, string>;
 
-    expect(log).toHaveLength(UPLOAD_LOG_MAX);
-    expect(log[0].name).toBe('new.md');
-    expect(log.some((e) => e.id === `old-${UPLOAD_LOG_MAX - 1}`)).toBe(false);
+  beforeEach(() => {
+    store = installFakeWindow();
   });
 
-  it('returns the previous log unchanged when nothing was uploaded', () => {
-    const prev = appendUploadLog([], [file('a.md')], 1000);
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, 'window');
+  });
 
-    expect(appendUploadLog(prev, [], 2000)).toEqual(prev);
+  it('reads back a saved timestamp', () => {
+    saveClearedBefore(1234);
+
+    expect(loadClearedBefore()).toBe(1234);
+  });
+
+  it('treats a missing marker as "nothing cleared"', () => {
+    expect(loadClearedBefore()).toBe(0);
+  });
+
+  it('ignores a corrupted marker', () => {
+    store.set(UPLOAD_LOG_CLEARED_KEY, 'not-a-number');
+
+    expect(loadClearedBefore()).toBe(0);
+  });
+
+  it('ignores a non-positive marker', () => {
+    store.set(UPLOAD_LOG_CLEARED_KEY, '-5');
+
+    expect(loadClearedBefore()).toBe(0);
   });
 });

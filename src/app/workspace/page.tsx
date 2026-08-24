@@ -22,7 +22,7 @@ import { UploadLogPanel } from '@/components/workspace/UploadLogPanel';
 import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspace/SvgViewer';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { clearUploadLog, recordUploads, useUploadLog } from '@/lib/upload-log-store';
+import { clearUploadLog, refreshUploadLog, useUploadLog } from '@/lib/upload-log-store';
 import type { UploadLogEntry } from '@/lib/upload-log';
 import { Loader2, Plus, FolderPlus, AlertTriangle } from 'lucide-react';
 import type {
@@ -33,7 +33,6 @@ import type {
   SortKey,
   TagCount,
   TagsResponse,
-  UploadedFileInfo,
 } from '@/types/api';
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -92,7 +91,7 @@ function WorkspacePageInner() {
   // 모바일 사이드바 토글
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // 우측 업로드 로그 (localStorage 외부 스토어 구독)
+  // 우측 업로드 로그 (서버 이력을 읽는 외부 스토어 구독)
   const uploadLog = useUploadLog();
 
   // 브라우저 탭 타이틀에 현재 폴더명을 붙인다 — 뷰어의 파일명 표시와 같은 패턴.
@@ -160,9 +159,10 @@ function WorkspacePageInner() {
     })();
   }, [refreshKey]);
 
-  const handleUploaded = useCallback((files: UploadedFileInfo[]) => {
+  const handleUploaded = useCallback(() => {
     setRefreshKey((k) => k + 1);
-    recordUploads(files, Date.now());
+    // 업로드 이력은 서버가 기록하므로 다시 읽어 온다(웹/API 업로드가 한 목록에 모인다).
+    void refreshUploadLog();
   }, []);
 
   const handleUploadLogClick = useCallback(

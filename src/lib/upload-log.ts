@@ -1,83 +1,58 @@
 /**
- * 업로드 로그 저장소 — 메인 화면 우측 패널에 표시할 최근 업로드 기록.
+ * 업로드 로그 — 순수 로직.
  *
- * 서버에 남기는 감사 로그가 아니라 **브라우저 로컬 표시용**이다.
- * 페이지 이동(뷰어/에디터)으로 컴포넌트가 언마운트돼도 유지되도록 localStorage에 보관한다.
- * 저장 실패(사생활 보호 모드 등)는 무시한다 — 로그 표시는 부가 기능이다.
+ * 기록의 원본은 **서버**(`GET /api/upload-log`)다. 예전에는 브라우저 localStorage에만
+ * 쌓았기 때문에 curl 등 API 직접 호출로 올린 파일이 목록에 나타나지 않았다.
+ * 지금 localStorage에 남는 것은 "여기까지 지웠다"는 표시 하나뿐이며,
+ * Clear는 **표시만** 감춘다(서버 이력과 파일은 그대로).
  */
 
-import type { UploadedFileInfo } from '@/types/api';
+import type { UploadHistoryEntry } from '@/types/api';
 
-export const UPLOAD_LOG_STORAGE_KEY = 'hw-upload-log';
+export type { UploadHistoryEntry as UploadLogEntry };
 
-/** 보관 최대 건수. 초과분은 오래된 것부터 버린다. */
+/** Clear 기준 시각을 담는 localStorage 키. */
+export const UPLOAD_LOG_CLEARED_KEY = 'hw-upload-log-cleared-before';
+
+/** 우측 패널이 서버에서 가져올 최근 건수. */
 export const UPLOAD_LOG_MAX = 30;
 
-export interface UploadLogEntry {
-  id: string;
-  name: string;
-  /** MARKDOWN_ROOT 기준 상대 경로 */
-  subpath: string;
-  size: number;
-  /** 업로드 시각(ms, 클라이언트 시계) */
-  at: number;
-}
-
 /**
- * 새 업로드분을 로그 앞(최신순)에 붙이고 상한으로 자른다.
- * 한 번에 여러 건이 올라온 경우 나중에 끝난 파일이 위로 온다.
+ * Clear 이후에 올라온 항목만 남긴다.
+ *
+ * @param entries       서버에서 받은 최신순 목록
+ * @param clearedBefore Clear를 누른 시각(ms). 0이면 전부 표시한다.
  */
-export function appendUploadLog(
-  prev: UploadLogEntry[],
-  files: UploadedFileInfo[],
-  at: number,
-): UploadLogEntry[] {
-  const added: UploadLogEntry[] = files.map((file, index) => ({
-    id: `${at}-${index}-${file.subpath}`,
-    name: file.name,
-    subpath: file.subpath,
-    size: file.size,
-    at,
-  }));
-
-  return [...added.reverse(), ...prev].slice(0, UPLOAD_LOG_MAX);
+export function visibleEntries(
+  entries: UploadHistoryEntry[],
+  clearedBefore: number,
+): UploadHistoryEntry[] {
+  if (clearedBefore <= 0) return entries;
+  return entries.filter((entry) => entry.at > clearedBefore);
 }
 
-/** 저장된 값이 로그 항목 형태인지 확인한다(다른 버전의 잔여 데이터 방어). */
-function isEntry(value: unknown): value is UploadLogEntry {
-  if (typeof value !== 'object' || value === null) return false;
-  const e = value as Record<string, unknown>;
-  return (
-    typeof e.id === 'string' &&
-    typeof e.name === 'string' &&
-    typeof e.subpath === 'string' &&
-    typeof e.size === 'number' &&
-    typeof e.at === 'number'
-  );
-}
-
-/** localStorage에서 로그를 읽는다. 손상/부재 시 빈 배열. */
-export function loadUploadLog(): UploadLogEntry[] {
-  if (typeof window === 'undefined') return [];
+/** Clear 기준 시각을 읽는다. 없거나 손상됐으면 0(전부 표시). */
+export function loadClearedBefore(): number {
+  if (typeof window === 'undefined') return 0;
 
   try {
-    const raw = window.localStorage.getItem(UPLOAD_LOG_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isEntry).slice(0, UPLOAD_LOG_MAX);
+    const raw = window.localStorage.getItem(UPLOAD_LOG_CLEARED_KEY);
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   } catch {
-    return [];
+    return 0;
   }
 }
 
-/** localStorage에 로그를 저장한다. 실패는 무시한다. */
-export function saveUploadLog(entries: UploadLogEntry[]): void {
+/** Clear 기준 시각을 저장한다. 실패는 무시한다(표시용 데이터). */
+export function saveClearedBefore(at: number): void {
   if (typeof window === 'undefined') return;
 
   try {
-    window.localStorage.setItem(UPLOAD_LOG_STORAGE_KEY, JSON.stringify(entries));
+    window.localStorage.setItem(UPLOAD_LOG_CLEARED_KEY, String(at));
   } catch {
-    // 용량 초과·비활성 스토리지 — 표시용 데이터이므로 무시
+    // 용량 초과·비활성 스토리지 — 표시용이므로 무시
   }
 }
+

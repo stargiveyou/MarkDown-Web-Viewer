@@ -145,6 +145,8 @@ export const UPLOAD_FIELD = {
   file: 'file',
   /** 저장할 대상 폴더 (MARKDOWN_ROOT 기준 상대 경로). */
   targetPath: 'targetPath',
+  /** 업로드 주체 표시. 웹 UI만 'web'을 보내고, 미전송은 API 직접 호출로 본다. */
+  client: 'client',
 } as const;
 
 export interface UploadedFileInfo {
@@ -159,6 +161,30 @@ export interface UploadResponse {
   files: UploadedFileInfo[];
   /** 업로드 완료 Webhook 발화 여부 (실패해도 업로드 자체는 성공). */
   notified: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// 업로드 이력 — GET /api/upload-log?limit=
+// ---------------------------------------------------------------------------
+
+/**
+ * 서버에 기록된 업로드 1건. 웹 UI 업로드와 API 직접 호출(curl 등)을 함께 담는다.
+ */
+export interface UploadHistoryEntry {
+  /** 서버 발급 식별자(행 id). */
+  id: string;
+  name: string;
+  /** MARKDOWN_ROOT 기준 상대 경로 */
+  subpath: string;
+  size: number;
+  /** 업로드 시각(epoch ms, 서버 시계) */
+  at: number;
+  /** 업로드 경로 — 웹 UI(`web`) 또는 API 직접 호출(`api`) */
+  source: 'web' | 'api';
+}
+
+export interface UploadLogResponse {
+  entries: UploadHistoryEntry[];
 }
 
 // ---------------------------------------------------------------------------

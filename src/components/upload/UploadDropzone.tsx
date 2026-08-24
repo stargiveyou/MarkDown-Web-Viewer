@@ -108,6 +108,8 @@ export function UploadDropzone({ targetPath = '', onUploaded }: UploadDropzonePr
         form.append(UPLOAD_FIELD.file, item.file, item.file.name);
         // 루트(빈 문자열)면 필드 자체를 보내지 않는다 — 계약 §1-2.
         if (resolvedTargetPath) form.append(UPLOAD_FIELD.targetPath, resolvedTargetPath);
+        // 업로드 이력에서 웹 UI 업로드와 API 직접 호출(curl 등)을 구분하기 위한 표식.
+        form.append(UPLOAD_FIELD.client, 'web');
 
         try {
           const res = await apiUpload<UploadResponse>('/api/upload', form, (ratio) =>
