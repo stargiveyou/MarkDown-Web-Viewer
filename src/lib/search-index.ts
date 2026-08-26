@@ -27,6 +27,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import matter from 'gray-matter';
 
+import { firstHeading } from './doc-title';
 import { getServerEnv } from './env';
 import {
   assertRealPathUnderRoot,
@@ -167,8 +168,10 @@ export async function indexFile(subpath: string): Promise<void> {
   const raw = await fs.readFile(absolutePath, 'utf8');
   const parsed = matter(raw);
 
+  // 제목 규칙은 뷰어·캘린더와 공유한다(`doc-title`) — 화면마다 다른 제목이 보이면 안 된다.
   const title =
     (typeof parsed.data.title === 'string' && parsed.data.title.trim()) ||
+    firstHeading(parsed.content) ||
     path.basename(subpath, path.extname(subpath));
 
   const body = parsed.content;
@@ -318,6 +321,45 @@ export function getAllTags(): TagCount[] {
   return Array.from(counts.entries())
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+// ---------------------------------------------------------------------------
+// 제목 조회
+// ---------------------------------------------------------------------------
+
+/**
+ * 여러 문서의 제목을 한 번에 읽는다 — 캘린더 목록이 파일명 대신 제목을 보여줄 때 쓴다.
+ *
+ * 색인에 없는 경로(이미지 등 비마크다운, 아직 색인 전)는 결과에 담기지 않으므로
+ * 호출부가 파일명으로 대체한다. 제목이 파일명과 같으면(=문서에 제목이 없음)
+ * 굳이 돌려주지 않아 응답이 불필요하게 커지지 않게 한다.
+ *
+ * @param subpaths MARKDOWN_ROOT 기준 상대 경로들
+ */
+export function getTitles(subpaths: string[]): Map<string, string> {
+  const titles = new Map<string, string>();
+  if (subpaths.length === 0) return titles;
+
+  const d = ensureDb();
+  const unique = [...new Set(subpaths)];
+
+  // SQLite 변수 상한(기본 999)에 걸리지 않도록 나눠 조회한다.
+  const CHUNK = 500;
+  for (let start = 0; start < unique.length; start += CHUNK) {
+    const chunk = unique.slice(start, start + CHUNK);
+    const rows = d
+      .prepare(
+        `SELECT subpath, title FROM docs_fts WHERE subpath IN (${chunk.map(() => '?').join(',')})`,
+      )
+      .all(...chunk) as Array<{ subpath: string; title: string }>;
+
+    for (const row of rows) {
+      const fallback = path.basename(row.subpath, path.extname(row.subpath));
+      if (row.title && row.title !== fallback) titles.set(row.subpath, row.title);
+    }
+  }
+
+  return titles;
 }
 
 // ---------------------------------------------------------------------------

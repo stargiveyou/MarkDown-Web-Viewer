@@ -19,6 +19,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import rehypeBeforeAfter from '@/lib/rehype-before-after';
 import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
+import { extractDocTitle } from '@/lib/doc-title';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
 import { MermaidBlock } from '@/components/workspace/MermaidBlock';
@@ -47,23 +48,6 @@ function resolveImageSrc(src: string, filePath: string): string {
   const imagePath = dir ? `${dir}/${cleanSrc}` : cleanSrc;
 
   return `/api/thumbnail?path=${encodeURIComponent(imagePath)}&w=800`;
-}
-
-/**
- * 마크다운에서 문서 제목을 추출한다 — frontmatter `title` > 첫 H1 순.
- * 둘 다 없으면 null을 돌려주고 호출부가 파일명으로 폴백한다.
- */
-function extractDocTitle(markdown: string): string | null {
-  const frontmatter = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (frontmatter) {
-    const title = frontmatter[1].match(/^title:\s*(['"]?)(.+?)\1\s*$/m);
-    if (title) return title[2].trim();
-  }
-
-  // 코드 블록 안의 `# 주석`을 H1로 오인하지 않도록 펜스 블록을 제거하고 찾는다.
-  const withoutCode = markdown.replace(/```[\s\S]*?```/g, '');
-  const h1 = withoutCode.match(/^#\s+(.+)$/m);
-  return h1 ? h1[1].trim() : null;
 }
 
 function ViewerPageInner() {
