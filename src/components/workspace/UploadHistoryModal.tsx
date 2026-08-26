@@ -16,7 +16,12 @@ import { CalendarDays, FileText, Loader2 } from 'lucide-react';
 
 import { Modal } from '@/components/ui/Modal';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { groupUploadsByDay } from '@/lib/upload-log';
+import {
+  entryDisplayName,
+  folderOf,
+  groupUploadsByDay,
+  showsTitle,
+} from '@/lib/upload-log';
 import type { UploadHistoryEntry, UploadLogResponse } from '@/types/api';
 
 /** 한 번에 읽어 오는 건수. 라우트의 상한(500)과 맞춘다. */
@@ -39,10 +44,24 @@ function formatTime(at: number): string {
   return new Date(at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** 파일이 담긴 폴더 경로. 루트면 빈 문자열. */
-function folderOf(subpath: string): string {
-  const slash = subpath.lastIndexOf('/');
-  return slash === -1 ? '' : subpath.slice(0, slash);
+/** 출처 칩 — 어디로 올라온 기록인지. */
+function SourceChip({ source }: { source: UploadHistoryEntry['source'] }) {
+  const label = source === 'api' ? 'API' : source === 'web' ? 'WEB' : '기존';
+  const tone =
+    source === 'api'
+      ? 'border-amber-900/60 bg-amber-950/40 text-amber-500'
+      : source === 'web'
+        ? 'border-zinc-700 text-zinc-400'
+        : 'border-zinc-800 text-zinc-600';
+
+  return (
+    <span
+      title={source === 'scan' ? '이력 기록 이전부터 있던 파일 (파일 시각 기준)' : undefined}
+      className={`shrink-0 rounded border px-1 text-[9px] tracking-wide ${tone}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 export function UploadHistoryModal({ open, onClose, onEntryClick }: UploadHistoryModalProps) {
@@ -204,21 +223,21 @@ export function UploadHistoryModal({ open, onClose, onEntryClick }: UploadHistor
                     <FileText className="h-4 w-4 shrink-0 text-zinc-500" />
 
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs text-zinc-200">{entry.name}</span>
+                      {/* 문서는 제목을 크게, 그 아래에 실제 파일명과 폴더를 함께 보여준다. */}
+                      <span className="block truncate text-xs text-zinc-200">
+                        {entryDisplayName(entry)}
+                      </span>
+                      {showsTitle(entry) && (
+                        <span className="block truncate text-[10px] text-zinc-400">
+                          {entry.name}
+                        </span>
+                      )}
                       <span className="block truncate text-[10px] text-zinc-500">
                         {folder ? `/${folder}` : '루트'}
                       </span>
                     </span>
 
-                    <span
-                      className={`shrink-0 rounded border px-1 text-[9px] tracking-wide ${
-                        entry.source === 'api'
-                          ? 'border-amber-900/60 bg-amber-950/40 text-amber-500'
-                          : 'border-zinc-700 text-zinc-400'
-                      }`}
-                    >
-                      {entry.source === 'api' ? 'API' : 'WEB'}
-                    </span>
+                    <SourceChip source={entry.source} />
 
                     <span className="shrink-0 text-[10px] tabular-nums text-zinc-600">
                       {formatTime(entry.at)} · {formatBytes(entry.size)}

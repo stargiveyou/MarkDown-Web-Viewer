@@ -7,6 +7,7 @@
  * Clear는 **표시만** 감춘다(서버 이력과 파일은 그대로).
  */
 
+import { isMarkdownName } from './doc-title';
 import type { UploadHistoryEntry } from '@/types/api';
 
 export type { UploadHistoryEntry as UploadLogEntry };
@@ -115,4 +116,30 @@ export function groupUploadsByDay(
   }
 
   return groups;
+}
+
+// ---------------------------------------------------------------------------
+// 표시 이름 — 날짜별 이력 창과 캘린더가 함께 쓴다.
+// ---------------------------------------------------------------------------
+
+/**
+ * 목록에 크게 보여줄 이름.
+ *
+ * 마크다운 문서는 제목(frontmatter title 또는 첫 H1)을 쓰고, 이미지·SVG 등은
+ * 제목 개념이 없으므로 언제나 파일명 그대로다. 서버도 md에만 `title`을 실어 주지만,
+ * 화면 규칙이 코드에서 바로 읽히도록 여기서도 확인한다.
+ */
+export function entryDisplayName(entry: UploadHistoryEntry): string {
+  return isMarkdownName(entry.name) ? entry.title ?? entry.name : entry.name;
+}
+
+/** 제목이 파일명을 대신하고 있는지 — 부제목에 파일명을 덧붙일지 판단한다. */
+export function showsTitle(entry: UploadHistoryEntry): boolean {
+  return entryDisplayName(entry) !== entry.name;
+}
+
+/** 파일이 담긴 폴더 경로. 루트면 빈 문자열. */
+export function folderOf(subpath: string): string {
+  const slash = subpath.lastIndexOf('/');
+  return slash === -1 ? '' : subpath.slice(0, slash);
 }

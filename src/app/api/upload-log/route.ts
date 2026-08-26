@@ -14,13 +14,15 @@
 import { NextResponse } from 'next/server';
 
 import { apiError, internalError } from '@/lib/api-response';
+import { isMarkdownName } from '@/lib/doc-title';
+import { getTitles } from '@/lib/search-index';
 import {
   ensureUploadHistoryBackfilled,
   listUploads,
   listUploadsInRange,
   type UploadCursor,
 } from '@/lib/upload-history';
-import type { UploadLogResponse } from '@/types/api';
+import type { UploadHistoryEntry, UploadLogResponse } from '@/types/api';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +34,23 @@ const MAX_LIMIT = 500;
 
 /** 기간 조회 상한 — 한 번에 훑을 수 있는 길이(약 1년). */
 const MAX_RANGE_MS = 400 * 24 * 60 * 60 * 1000;
+
+/**
+ * 마크다운 문서에 제목을 붙인다.
+ *
+ * 제목은 검색 색인이 이미 갖고 있으므로 파일을 다시 읽지 않고 한 번의 조회로 끝낸다.
+ * 이미지 등은 제목 개념이 없어 건드리지 않는다 — 화면은 파일명을 그대로 쓴다.
+ */
+function withTitles(entries: UploadHistoryEntry[]): UploadHistoryEntry[] {
+  const titles = getTitles(
+    entries.filter((entry) => isMarkdownName(entry.name)).map((entry) => entry.subpath),
+  );
+
+  return entries.map((entry) => {
+    const title = isMarkdownName(entry.name) ? titles.get(entry.subpath) : undefined;
+    return title ? { ...entry, title } : entry;
+  });
+}
 
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -55,7 +74,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     try {
       // 이력 기록 이전에 올라간 파일은 여기서 한 번 채운다(완료 후에는 no-op).
       ensureUploadHistoryBackfilled();
-      const body: UploadLogResponse = { entries: listUploadsInRange(from, to) };
+
+      const body: UploadLogResponse = { entries: withTitles(listUploadsInRange(from, to)) };
       return NextResponse.json(body, { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
       return internalError('upload-log', error);
@@ -87,7 +107,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const body: UploadLogResponse = { entries: listUploads(limit, before) };
+    // 날짜별 이력 창도 제목을 보여주므로 최근 목록에도 함께 붙인다.
+    const body: UploadLogResponse = { entries: withTitles(listUploads(limit, before)) };
     return NextResponse.json(body, {
       // 항상 최신 상태여야 한다(다른 클라이언트가 올린 파일을 바로 보여 준다).
       headers: { 'Cache-Control': 'no-store' },

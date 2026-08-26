@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   UPLOAD_LOG_CLEARED_KEY,
+  entryDisplayName,
+  folderOf,
   groupUploadsByDay,
   loadClearedBefore,
   saveClearedBefore,
+  showsTitle,
   visibleEntries,
 } from './upload-log';
 import type { UploadHistoryEntry } from '@/types/api';
@@ -134,5 +137,42 @@ describe('groupUploadsByDay', () => {
 
   it('returns nothing for an empty log', () => {
     expect(groupUploadsByDay([], now)).toEqual([]);
+  });
+});
+
+describe('entryDisplayName / showsTitle', () => {
+  function md(name: string, title?: string): UploadHistoryEntry {
+    return { id: '1', name, subpath: `docs/${name}`, size: 10, at: 1000, source: 'api', title };
+  }
+
+  it('shows the document title for markdown', () => {
+    const entry = md('tupgrid-shader-analysis.md', 'TUpGrid.shader 분석');
+
+    expect(entryDisplayName(entry)).toBe('TUpGrid.shader 분석');
+    expect(showsTitle(entry)).toBe(true);
+  });
+
+  it('falls back to the filename when a document has no title', () => {
+    const entry = md('no-title.md');
+
+    expect(entryDisplayName(entry)).toBe('no-title.md');
+    expect(showsTitle(entry)).toBe(false);
+  });
+
+  it('never titles a non-markdown file, even if one slipped in', () => {
+    const entry = md('diagram.svg', '어쩌다 붙은 제목');
+
+    expect(entryDisplayName(entry)).toBe('diagram.svg');
+    expect(showsTitle(entry)).toBe(false);
+  });
+});
+
+describe('folderOf', () => {
+  it('returns the containing folder', () => {
+    expect(folderOf('Trip/Jeju/note.md')).toBe('Trip/Jeju');
+  });
+
+  it('returns an empty string at the root', () => {
+    expect(folderOf('note.md')).toBe('');
   });
 });

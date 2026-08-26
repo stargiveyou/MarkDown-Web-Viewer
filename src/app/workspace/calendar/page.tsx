@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { emitToast } from '@/components/ui/toast-bus';
+import { isMarkdownName } from '@/lib/doc-title';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
 import {
   buildMonthCells,
@@ -32,7 +33,7 @@ import {
   weekdayLabels,
   type YearMonth,
 } from '@/lib/upload-calendar';
-import { dayKeyOf } from '@/lib/upload-log';
+import { dayKeyOf, entryDisplayName, folderOf, showsTitle } from '@/lib/upload-log';
 import { useClientNow } from '@/lib/use-client-now';
 import type { UploadHistoryEntry, UploadLogResponse } from '@/types/api';
 
@@ -47,16 +48,6 @@ function formatBytes(bytes: number): string {
 
 function formatTime(at: number): string {
   return new Date(at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-}
-
-/** 파일이 담긴 폴더 경로. 루트면 빈 문자열. */
-function folderOf(subpath: string): string {
-  const slash = subpath.lastIndexOf('/');
-  return slash === -1 ? '' : subpath.slice(0, slash);
-}
-
-function isMarkdown(name: string): boolean {
-  return /\.(md|markdown)$/i.test(name);
 }
 
 /** 출처 칩 — 어디로 올라온 기록인지. */
@@ -146,7 +137,7 @@ function CalendarPageInner() {
   const handleOpen = useCallback(
     (entry: UploadHistoryEntry) => {
       // 문서는 뷰어로, 그 외 파일은 담긴 폴더로 보낸다.
-      if (isMarkdown(entry.name)) {
+      if (isMarkdownName(entry.name)) {
         router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
         return;
       }
@@ -299,14 +290,16 @@ function CalendarPageInner() {
                     {dayEntries.slice(0, CHIPS_PER_CELL).map((entry) => (
                       <span
                         key={entry.id}
-                        title={entry.name}
+                        title={
+                          showsTitle(entry) ? `${entryDisplayName(entry)} (${entry.name})` : entry.name
+                        }
                         className={`truncate rounded px-1.5 py-0.5 text-[9.5px] ${
                           entry.source === 'api'
                             ? 'bg-amber-500/12 text-amber-400'
                             : 'bg-zinc-800 text-zinc-300'
                         }`}
                       >
-                        {entry.name}
+                        {entryDisplayName(entry)}
                       </span>
                     ))}
 
@@ -364,8 +357,12 @@ function CalendarPageInner() {
                       <FileText className="h-4 w-4 shrink-0 text-zinc-500" />
 
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs text-zinc-200">{entry.name}</span>
+                        <span className="block truncate text-xs text-zinc-200">
+                          {entryDisplayName(entry)}
+                        </span>
+                        {/* 제목을 보여줄 때는 실제 파일명이 사라지지 않도록 경로 옆에 붙인다. */}
                         <span className="block truncate text-[10px] text-zinc-500">
+                          {showsTitle(entry) ? `${entry.name} · ` : ''}
                           {folder ? `/${folder}` : '루트'}
                         </span>
                       </span>

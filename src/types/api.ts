@@ -189,6 +189,11 @@ export interface UploadHistoryEntry {
   at: number;
   /** 업로드 경로 — [UploadSource] 참고 */
   source: UploadSource;
+  /**
+   * 문서 제목(frontmatter title 또는 첫 H1). 기간 조회에서만 채운다.
+   * 제목이 없거나 파일명과 같으면 생략되므로 호출부는 `name`으로 대체한다.
+   */
+  title?: string;
 }
 
 export interface UploadLogResponse {
