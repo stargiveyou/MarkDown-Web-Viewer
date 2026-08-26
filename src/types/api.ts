@@ -168,6 +168,14 @@ export interface UploadResponse {
 // ---------------------------------------------------------------------------
 
 /**
+ * 업로드가 들어온 경로.
+ * - `web`  웹 UI 업로드
+ * - `api`  API 직접 호출(curl 등)
+ * - `scan` 이력 기록 이전부터 저장소에 있던 파일 (파일시스템 시각으로 채운 것)
+ */
+export type UploadSource = 'web' | 'api' | 'scan';
+
+/**
  * 서버에 기록된 업로드 1건. 웹 UI 업로드와 API 직접 호출(curl 등)을 함께 담는다.
  */
 export interface UploadHistoryEntry {
@@ -179,8 +187,8 @@ export interface UploadHistoryEntry {
   size: number;
   /** 업로드 시각(epoch ms, 서버 시계) */
   at: number;
-  /** 업로드 경로 — 웹 UI(`web`) 또는 API 직접 호출(`api`) */
-  source: 'web' | 'api';
+  /** 업로드 경로 — [UploadSource] 참고 */
+  source: UploadSource;
 }
 
 export interface UploadLogResponse {
