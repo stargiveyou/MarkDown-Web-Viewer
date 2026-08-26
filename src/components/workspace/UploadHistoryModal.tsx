@@ -11,7 +11,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { CalendarDays, FileText, Loader2 } from 'lucide-react';
 
 import { Modal } from '@/components/ui/Modal';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
@@ -45,6 +46,7 @@ function folderOf(subpath: string): string {
 }
 
 export function UploadHistoryModal({ open, onClose, onEntryClick }: UploadHistoryModalProps) {
+  const router = useRouter();
   const [entries, setEntries] = useState<UploadHistoryEntry[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   /** '오늘'/'어제' 판정 기준 시각. 창을 연 순간으로 고정한다(렌더마다 흔들리면 안 된다). */
@@ -119,6 +121,19 @@ export function UploadHistoryModal({ open, onClose, onEntryClick }: UploadHistor
 
   return (
     <Modal open={open} title="날짜별 업로드 이력" onClose={onClose} size="xl">
+      {/* 달력으로 훑어보고 싶을 때 — 과거 달까지 거슬러 볼 수 있는 화면으로 보낸다. */}
+      <button
+        type="button"
+        onClick={() => {
+          onClose();
+          router.push('/workspace/calendar');
+        }}
+        className="mb-3 flex items-center gap-1.5 rounded-lg border border-zinc-800 px-2.5 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+      >
+        <CalendarDays className="h-3 w-3" />
+        캘린더로 보기
+      </button>
+
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
           <Loader2 className="h-5 w-5 animate-spin text-amber-400" />

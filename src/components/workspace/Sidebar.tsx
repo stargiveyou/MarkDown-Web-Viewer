@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronRight, Folder, HardDrive, Home, Server } from 'lucide-react';
+import { CalendarDays, ChevronRight, Folder, HardDrive, Home, Server } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import type { DiskUsageResponse, FilesResponse } from '@/types/api';
 
@@ -22,6 +22,8 @@ export interface SidebarProps {
   onFolderClick: (subpath: string) => void;
   /** 홈(루트) 클릭 */
   onHomeClick: () => void;
+  /** 업로드 캘린더 페이지로 이동 */
+  onCalendarClick: () => void;
   /** 로그아웃 */
   onLogout: () => void;
   loggingOut: boolean;
@@ -155,6 +157,7 @@ export function Sidebar({
   currentPath,
   onFolderClick,
   onHomeClick,
+  onCalendarClick,
   onLogout,
   loggingOut,
 }: SidebarProps) {
@@ -195,6 +198,15 @@ export function Sidebar({
           >
             <Home className="h-4 w-4" />
             <span>Home</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onCalendarClick}
+            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+          >
+            <CalendarDays className="h-4 w-4" />
+            <span>업로드 캘린더</span>
           </button>
 
           <div className="mt-3 mb-2 px-3">
