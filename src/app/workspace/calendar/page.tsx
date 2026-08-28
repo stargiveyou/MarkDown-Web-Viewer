@@ -85,8 +85,15 @@ function CalendarPageInner() {
   const [error, setError] = useState('');
 
   const todayKey = now === 0 ? '' : dayKeyOf(now);
-  const month = pickedMonth ?? (now === 0 ? null : currentMonth(now));
   const selectedKey = pickedKey ?? (todayKey || null);
+
+  // useMemo가 필수다 — currentMonth()는 렌더마다 새 객체를 만들고, 그 참조가
+  // cells → 조회 effect의 의존성으로 이어진다. 메모하지 않으면
+  // "조회 → setState → 새 객체 → 다시 조회"가 끝없이 돌아 로딩이 멈추지 않는다.
+  const month = useMemo(
+    () => pickedMonth ?? (now === 0 ? null : currentMonth(now)),
+    [pickedMonth, now],
+  );
 
   useEffect(() => {
     document.title = 'Husky Works MDs - 업로드 캘린더';
