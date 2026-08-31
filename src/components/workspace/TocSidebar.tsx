@@ -1,16 +1,21 @@
 'use client';
 
 /**
- * 뷰어 목차(TOC) 사이드바 -- 마크다운 원문에서 제목을 파싱해 앵커 목록을 렌더한다.
+ * 뷰어 목차(TOC) 사이드바 -- 렌더된 본문의 제목 엘리먼트에서 직접 목차를 만든다.
  *
- * - rehype-slug와 동일한 github-slugger로 id를 생성하므로 앵커가 본문과 항상 일치한다.
+ * - 마크다운 원문을 따로 파싱하지 않고 rehype-slug가 실제로 붙인 id를 그대로 쓴다.
+ *   원문 파싱과 렌더 결과가 어긋나는 경우(setext 제목, 제목 속 HTML, frontmatter 오인식 등)
+ *   앵커가 존재하지 않아 클릭이 먹통이 되는데, DOM에서 읽으면 그 틈이 사라진다.
+ * - MarkdownHooks는 비동기로 렌더되므로 MutationObserver로 본문이 채워지는 시점을 기다린다.
+ * - 이동은 브라우저 기본 프래그먼트 내비게이션에 맡긴다. history.replaceState()를 부르면
+ *   App Router가 패치해 둔 구현이 이를 히스토리 복원 내비게이션으로 처리해서
+ *   진행 중이던 스크롤을 되돌리거나 하드 내비게이션(새로고침)을 일으킨다.
  * - IntersectionObserver로 현재 화면에 보이는 섹션을 하이라이트한다(scroll spy).
  * - xl 미만 화면에서는 숨긴다 (본문 가독성 우선).
  * - xl 이상에서는 화면 왼쪽 끝에 고정 레일로 붙어 본문 폭을 최대한 양보한다.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import GithubSlugger from 'github-slugger';
+import { useEffect, useRef, useState } from 'react';
 
 interface TocItem {
   id: string;
@@ -18,37 +23,63 @@ interface TocItem {
   level: number;
 }
 
-/** 마크다운 원문에서 ATX 제목(#~######)을 추출한다. */
-function extractHeadings(markdown: string): TocItem[] {
-  let source = markdown;
+const HEADING_SELECTOR = 'h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]';
 
-  // frontmatter 제거
-  source = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-  // fenced code block 제거 (코드 내부의 #이 제목으로 잡히는 것 방지)
-  source = source.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1\s*$/gm, '');
-
-  const slugger = new GithubSlugger();
-  const items: TocItem[] = [];
-  const headingRegex = /^(#{1,6})\s+(.+?)\s*#*\s*$/gm;
-
-  let match: RegExpExecArray | null;
-  while ((match = headingRegex.exec(source)) !== null) {
-    const level = match[1].length;
-    // 인라인 마크다운 표기를 걷어내 렌더된 텍스트와 근사시킨다
-    const text = match[2]
-      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/[*_`~]/g, '')
-      .trim();
-    if (!text) continue;
-    items.push({ id: slugger.slug(text), text, level });
-  }
-  return items;
+function sameItems(a: TocItem[], b: TocItem[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((item, i) => item.id === b[i].id && item.text === b[i].text)
+  );
 }
 
-export function TocSidebar({ content }: { content: string }) {
-  const items = useMemo(() => extractHeadings(content), [content]);
+export function TocSidebar({
+  content,
+  containerId = 'doc-article',
+}: {
+  /** 본문 원문. 파싱에는 쓰지 않고, 문서가 바뀌었을 때 다시 훑는 신호로만 쓴다. */
+  content: string;
+  containerId?: string;
+}) {
+  const [items, setItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState('');
+  const hashApplied = useRef(false);
+
+  // 본문이 (비동기로) 그려지거나 바뀔 때마다 제목을 다시 읽는다.
+  useEffect(() => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let frame = 0;
+
+    const read = () => {
+      frame = 0;
+      const next = Array.from(
+        container.querySelectorAll<HTMLElement>(HEADING_SELECTOR),
+      )
+        .map((el) => ({
+          id: el.id,
+          text: (el.textContent || '').trim(),
+          level: Number(el.tagName.slice(1)),
+        }))
+        .filter((item) => item.id && item.text);
+      setItems((prev) => (sameItems(prev, next) ? prev : next));
+    };
+
+    // mermaid·코드 하이라이트가 DOM을 계속 건드리므로 프레임 단위로 묶는다.
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(read);
+    };
+
+    read();
+    const observer = new MutationObserver(schedule);
+    observer.observe(container, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [containerId, content]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -73,6 +104,20 @@ export function TocSidebar({ content }: { content: string }) {
     return () => observer.disconnect();
   }, [items]);
 
+  // 해시가 붙은 URL로 바로 들어온 경우. 본문이 늦게 그려져 브라우저의 자동 이동은
+  // 이미 실패한 뒤이므로, 제목이 생긴 다음 한 번만 직접 맞춰준다.
+  useEffect(() => {
+    if (hashApplied.current || items.length === 0) return;
+    hashApplied.current = true;
+
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    // 하이라이트는 아래 scroll spy가 이어서 잡아준다.
+    el.scrollIntoView({ block: 'start' });
+  }, [items]);
+
   if (items.length === 0) return null;
 
   const minLevel = Math.min(...items.map((item) => item.level));
@@ -91,15 +136,8 @@ export function TocSidebar({ content }: { content: string }) {
           {items.map((item, index) => (
             <li key={`${item.id}-${index}`}>
               <a
-                href={`#${item.id}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  document
-                    .getElementById(item.id)
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  history.replaceState(null, '', `#${item.id}`);
-                  setActiveId(item.id);
-                }}
+                href={`#${encodeURIComponent(item.id)}`}
+                onClick={() => setActiveId(item.id)}
                 className={`block truncate border-l-2 py-1 pr-2 transition-colors ${
                   activeId === item.id
                     ? 'border-amber-500 font-medium text-amber-400'

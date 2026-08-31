@@ -28,6 +28,15 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* 목차·본문 앵커 클릭 시 부드럽게 이동한다.
+   history API를 건드리면 App Router가 히스토리 복원 내비게이션으로 처리하므로,
+   이동은 브라우저 기본 프래그먼트 동작에 맡기고 감속만 CSS로 준다. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Scrollbar 숨김 유틸리티 */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

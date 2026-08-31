@@ -30,6 +30,18 @@ import type { FileContentResponse } from '@/types/api';
 
 import 'highlight.js/styles/github-dark.css';
 
+/**
+ * remark/rehype 플러그인 배열은 모듈 스코프에 고정한다.
+ * MarkdownHooks는 이 배열의 "동일성"을 useEffect 의존성으로 쓰기 때문에,
+ * 렌더마다 새 배열을 넘기면 리렌더될 때마다 문서 전체를 다시 파싱하고
+ * 트리를 갈아끼워 스크롤 위치가 무너진다.
+ */
+const REMARK_PLUGINS = [remarkFrontmatter, remarkGfm];
+const REHYPE_PLUGINS = [rehypeSlug, rehypeHighlight, rehypeBeforeAfter];
+
+/** 목차가 제목을 찾아 읽는 본문 컨테이너 id. */
+const ARTICLE_ID = 'doc-article';
+
 /** 외부 URL인지 판별한다. */
 function isExternalUrl(src: string): boolean {
   return /^https?:\/\//i.test(src);
@@ -106,6 +118,50 @@ function ViewerPageInner() {
 
   // 파일명 추출 (헤더 표시용)
   const fileName = path.substring(path.lastIndexOf('/') + 1) || path;
+
+  // 커스텀 렌더러도 동일성을 유지해야 한다. 매 렌더마다 새 함수를 넘기면
+  // React가 코드블록·이미지 서브트리를 통째로 리마운트해 문서 높이가 출렁이고,
+  // 진행 중이던 앵커 스크롤이 엉뚱한 위치에서 끝난다.
+  const markdownComponents = useMemo(
+    () => ({
+      code: ({ className, children, ...rest }: React.ComponentPropsWithoutRef<'code'>) => {
+        const match = /language-mermaid/.exec(className || '');
+        if (match) {
+          const code = String(children).replace(/\n$/, '');
+          return <MermaidBlock code={code} />;
+        }
+        return <code className={className} {...rest}>{children}</code>;
+      },
+      pre: ({ children }: React.ComponentPropsWithoutRef<'pre'>) => {
+        // mermaid 블록이면 <pre> 래퍼를 제거한다
+        const child = children as React.ReactElement<{ className?: string }>;
+        if (child?.props?.className?.includes('language-mermaid')) {
+          return <>{children}</>;
+        }
+        return <pre>{children}</pre>;
+      },
+      img: ({ src, alt, ...rest }: React.ComponentPropsWithoutRef<'img'>) => {
+        if (!src || typeof src !== 'string') return null;
+        const resolvedSrc = resolveImageSrc(src, path);
+
+        // SVG는 확대해도 깨지지 않으므로 클릭하면 확대 뷰어로 연다.
+        if (isSvgSource(src)) {
+          return <ZoomableImage src={resolvedSrc} alt={alt || ''} />;
+        }
+
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            {...rest}
+            src={resolvedSrc}
+            alt={alt || ''}
+            loading="lazy"
+          />
+        );
+      },
+    }),
+    [path],
+  );
 
   // 브라우저 탭 타이틀에 문서 제목(frontmatter title > 첫 H1 > 파일명)을 붙인다
   // -- 여러 문서를 탭으로 열었을 때 구분용.
@@ -186,7 +242,7 @@ function ViewerPageInner() {
       {/* 본문 — 폭을 제한하지 않고 화면 전체를 쓴다. 목차는 왼쪽 끝 레일. */}
       <main className="flex w-full flex-1">
         {/* 목차 사이드바 (xl 이상) */}
-        {!loading && !error && <TocSidebar content={content} />}
+        {!loading && !error && <TocSidebar content={content} containerId={ARTICLE_ID} />}
 
         <div className="min-w-0 flex-1 px-8 py-10">
         {loading && (
@@ -212,47 +268,13 @@ function ViewerPageInner() {
         )}
 
         {!loading && !error && (
-          <article className="prose prose-invert prose-lg xl:prose-xl max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20 prose-pre:text-[0.85em] prose-table:text-[0.9em]">
+          <article
+            id={ARTICLE_ID}
+            className="prose prose-invert prose-lg xl:prose-xl max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20 prose-pre:text-[0.85em] prose-table:text-[0.9em]">
             <Markdown
-              remarkPlugins={[remarkFrontmatter, remarkGfm]}
-              rehypePlugins={[rehypeSlug, rehypeHighlight, rehypeBeforeAfter]}
-              components={{
-                code: ({ className, children, ...rest }) => {
-                  const match = /language-mermaid/.exec(className || '');
-                  if (match) {
-                    const code = String(children).replace(/\n$/, '');
-                    return <MermaidBlock code={code} />;
-                  }
-                  return <code className={className} {...rest}>{children}</code>;
-                },
-                pre: ({ children }) => {
-                  // mermaid 블록이면 <pre> 래퍼를 제거한다
-                  const child = children as React.ReactElement<{ className?: string }>;
-                  if (child?.props?.className?.includes('language-mermaid')) {
-                    return <>{children}</>;
-                  }
-                  return <pre>{children}</pre>;
-                },
-                img: ({ src, alt, ...rest }) => {
-                  if (!src || typeof src !== 'string') return null;
-                  const resolvedSrc = resolveImageSrc(src, path);
-
-                  // SVG는 확대해도 깨지지 않으므로 클릭하면 확대 뷰어로 연다.
-                  if (isSvgSource(src)) {
-                    return <ZoomableImage src={resolvedSrc} alt={alt || ''} />;
-                  }
-
-                  return (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      {...rest}
-                      src={resolvedSrc}
-                      alt={alt || ''}
-                      loading="lazy"
-                    />
-                  );
-                },
-              }}
+              remarkPlugins={REMARK_PLUGINS}
+              rehypePlugins={REHYPE_PLUGINS}
+              components={markdownComponents}
             >
               {content}
             </Markdown>
