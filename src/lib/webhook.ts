@@ -41,13 +41,27 @@ export interface WebhookResult {
 // 페이로드 빌더 (내부)
 // ---------------------------------------------------------------------------
 
+/** 앱 URL에서 `/workspace` 시작 지점 포함 상대 경로 주소를 추출한다. */
+export function getWorkspaceRelativeUrl(appUrl: string): string {
+  try {
+    const parsed = new URL(appUrl);
+    return parsed.pathname + parsed.search;
+  } catch {
+    const idx = appUrl.indexOf('/workspace');
+    return idx !== -1 ? appUrl.slice(idx) : appUrl;
+  }
+}
+
 /** Discord Embed 페이로드. */
 export function buildDiscordPayload(payload: WebhookPayload): object {
+  const relativeUrl = getWorkspaceRelativeUrl(payload.appUrl);
   return {
     embeds: [
       {
         title: payload.fileName,
-        description: `경로: \`${payload.filePath}\``,
+        description:
+          `경로: \`${payload.filePath}\`\n` +
+          `URL: [${relativeUrl}](${payload.appUrl})`,
         url: payload.appUrl,
         color: 0x5865f2, // Discord 브랜드 블루퍼플
         timestamp: new Date(payload.mtime).toISOString(),
@@ -61,6 +75,7 @@ export function buildDiscordPayload(payload: WebhookPayload): object {
 
 /** Slack Block Kit 페이로드. */
 export function buildSlackPayload(payload: WebhookPayload): object {
+  const relativeUrl = getWorkspaceRelativeUrl(payload.appUrl);
   return {
     blocks: [
       {
@@ -70,6 +85,7 @@ export function buildSlackPayload(payload: WebhookPayload): object {
           text:
             `*<${payload.appUrl}|${payload.fileName}>*\n` +
             `경로: \`${payload.filePath}\`\n` +
+            `URL: <${payload.appUrl}|${relativeUrl}>\n` +
             `수정일: ${new Date(payload.mtime).toLocaleString('ko-KR')}`,
         },
       },

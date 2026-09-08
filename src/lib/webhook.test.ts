@@ -29,6 +29,7 @@ import {
   sendWebhook,
   buildDiscordPayload,
   buildSlackPayload,
+  getWorkspaceRelativeUrl,
   type WebhookPayload,
 } from '@/lib/webhook';
 
@@ -78,6 +79,17 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// URL 추출 유틸리티 테스트
+// ---------------------------------------------------------------------------
+
+describe('getWorkspaceRelativeUrl', () => {
+  it('전체 appUrl에서 /workspace 시작 상대 경로 주소를 정상 추출한다', () => {
+    const url = 'https://my-app.ngrok-free.app/workspace/view?path=2026-Travel%2F%EC%97%AC%ED%96%89%EA%B8%B0.md';
+    expect(getWorkspaceRelativeUrl(url)).toBe('/workspace/view?path=2026-Travel%2F%EC%97%AC%ED%96%89%EA%B8%B0.md');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Discord 페이로드 구성
 // ---------------------------------------------------------------------------
 
@@ -90,13 +102,14 @@ describe('buildDiscordPayload', () => {
     expect((payload.embeds as any[]).length).toBe(1);
   });
 
-  it('embed에 필수 필드(title, description, url, color, timestamp, footer)가 있다', () => {
+  it('embed에 필수 필드(title, description, url, color, timestamp, footer)가 있고 /workspace 경로가 포함된다', () => {
     const payload = buildDiscordPayload(SAMPLE_PAYLOAD) as Record<string, unknown>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const embed = (payload.embeds as any[])[0];
 
     expect(embed.title).toBe(SAMPLE_PAYLOAD.fileName);
     expect(embed.description).toContain(SAMPLE_PAYLOAD.filePath);
+    expect(embed.description).toContain('/workspace/view?path=');
     expect(embed.url).toBe(SAMPLE_PAYLOAD.appUrl);
     expect(embed.color).toBe(0x5865f2);
     expect(embed.timestamp).toBe(new Date(SAMPLE_PAYLOAD.mtime).toISOString());
@@ -117,7 +130,7 @@ describe('buildSlackPayload', () => {
     expect((payload.blocks as any[]).length).toBe(2);
   });
 
-  it('section block에 파일명, 경로, 수정일이 포함된다', () => {
+  it('section block에 파일명, 경로, URL(/workspace 포함), 수정일이 포함된다', () => {
     const payload = buildSlackPayload(SAMPLE_PAYLOAD) as Record<string, unknown>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const section = (payload.blocks as any[])[0];
@@ -126,6 +139,7 @@ describe('buildSlackPayload', () => {
     expect(section.text.type).toBe('mrkdwn');
     expect(section.text.text).toContain(SAMPLE_PAYLOAD.fileName);
     expect(section.text.text).toContain(SAMPLE_PAYLOAD.filePath);
+    expect(section.text.text).toContain('/workspace/view?path=');
     expect(section.text.text).toContain('수정일');
   });
 
