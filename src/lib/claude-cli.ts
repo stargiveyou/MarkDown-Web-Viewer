@@ -66,14 +66,20 @@ export async function queryClaudeCli(userQuery: string): Promise<AiChatResult> {
     // -p 옵션은 단발성 prompt 전달 후 결과를 출력하고 종료한다.
     const args = ['-p', promptContext];
     
-    // MacOS/Linux 환경에서 실행
+    // MacOS/Linux 환경에서 실행.
+    //
+    // ⚠️ shell: true 를 쓰지 않는다. shell 을 켜면 command+args 가 따옴표 없이
+    // 한 줄로 이어붙어, 공백·줄바꿈이 있는 promptContext 가 셸에서 단어 분리되어
+    // `-p` 에 첫 토큰(예: "사용자")만 전달된다(실제 관측된 버그). 또한 사용자 입력이
+    // 그대로 셸에 들어가 command injection 위험이 있다(보안 불변식 8/일반 원칙).
+    // shell 없이 spawn 하면 promptContext 가 공백·한글 상관없이 하나의 argv 로
+    // 안전하게 전달된다. 실행 파일은 PATH(또는 CLAUDE_CLI_PATH 절대경로)로 찾는다.
     const child = spawn(cliExecutable, args, {
       env: {
         ...process.env,
-        // 필요 시 비인터랙티브 관련 터미널 옵션 설정
+        // 비인터랙티브 터미널 힌트
         TERM: 'dumb',
       },
-      shell: true, // MacOS/Windows 호환을 위해 shell 실행
     });
 
     let stdoutData = '';
