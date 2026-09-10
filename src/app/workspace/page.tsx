@@ -20,6 +20,7 @@ import { SearchResults } from '@/components/workspace/SearchResults';
 import { TagBar } from '@/components/workspace/TagBar';
 import { UploadLogPanel } from '@/components/workspace/UploadLogPanel';
 import { UploadHistoryModal } from '@/components/workspace/UploadHistoryModal';
+import { BottomAiPanel } from '@/components/workspace/BottomAiPanel';
 import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspace/SvgViewer';
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
@@ -546,6 +547,17 @@ function WorkspacePageInner() {
           </div>
         </div>
       )}
+
+      {/* Mac mini Claude AI 하단 탐색 패널 */}
+      <BottomAiPanel
+        onSelectFile={(filePath) => {
+          if (filePath.endsWith('.md')) {
+            router.push(`/workspace/view?path=${encodeURIComponent(filePath)}`);
+          } else {
+            router.push(`/workspace?path=${encodeURIComponent(filePath)}`);
+          }
+        }}
+      />
     </div>
   );
 }

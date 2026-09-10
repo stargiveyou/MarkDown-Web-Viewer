@@ -368,3 +368,25 @@ export interface DeleteResponse {
   subpath: string;
   name: string;
 }
+
+// ---------------------------------------------------------------------------
+// AI Chat — POST /api/ai/chat
+// ---------------------------------------------------------------------------
+
+export interface AiChatRequest {
+  /** 자연어 질의 문자열. */
+  query: string;
+}
+
+export interface AiChatResponse {
+  /** Claude CLI 또는 폴백엔진의 응답 텍스트. */
+  answer: string;
+  /** 검색된 연관 파일 목록. */
+  relatedFiles: Array<{
+    path: string;
+    snippet?: string;
+  }>;
+  /** CLI 호출 불가 시 폴백 모드 여부. */
+  isFallback?: boolean;
+}
+
