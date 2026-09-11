@@ -8,8 +8,15 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, ChevronDown, ChevronUp, FileText, Send, Sparkles } from 'lucide-react';
+import { AlertTriangle, Bot, ChevronDown, ChevronUp, FileText, Send, Sparkles } from 'lucide-react';
 import type { AiChatResponse } from '@/types/api';
+
+/**
+ * 클라이언트 타임아웃(ms).
+ * 서버(`AI_CLI_TIMEOUT_MS`, 기본 120초)보다 넉넉히 잡는다 — 서버가 먼저 폴백을 만들게 해서
+ * "사유 없는 네트워크 오류" 대신 원인이 적힌 답변이 오도록 한다.
+ */
+const REQUEST_TIMEOUT_MS = 150_000;
 
 export interface BottomAiPanelProps {
   /** 파일 칩 클릭 시 해당 마크다운 문서/폴더로 이동 */
@@ -61,15 +68,25 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
     setQuery('');
     setIsLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: trimmed }),
+        signal: controller.signal,
       });
 
+      if (res.status === 401) {
+        // 세션 만료 — 미들웨어 정책과 동일하게 로그인으로 돌려보낸다.
+        window.location.href = '/login';
+        return;
+      }
+
       if (!res.ok) {
-        throw new Error('AI 질의 응답 요청에 실패했습니다.');
+        throw new Error(`AI 질의 응답 요청에 실패했습니다. (HTTP ${res.status})`);
       }
 
       const data: AiChatResponse = await res.json();
@@ -85,16 +102,23 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
         },
       ]);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : '요청을 처리할 수 없습니다.';
+      const reason =
+        err instanceof DOMException && err.name === 'AbortError'
+          ? `응답이 ${Math.round(REQUEST_TIMEOUT_MS / 1000)}초 안에 오지 않아 요청을 중단했습니다.`
+          : err instanceof Error
+            ? err.message
+            : '요청을 처리할 수 없습니다.';
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
           text: `오류가 발생했습니다: ${reason}`,
+          isFallback: true,
         },
       ]);
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -143,9 +167,17 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
                     className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                       msg.sender === 'user'
                         ? 'bg-indigo-600 text-white rounded-br-none'
-                        : 'bg-slate-800 text-slate-200 border border-slate-700/60 rounded-bl-none'
+                        : msg.isFallback
+                          ? 'bg-amber-950/40 text-amber-100 border border-amber-600/40 rounded-bl-none'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700/60 rounded-bl-none'
                     }`}
                   >
+                    {msg.isFallback && (
+                      <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold text-amber-400">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Claude CLI 응답 없음
+                      </div>
+                    )}
                     <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
 
                     {/* 연관 파일 칩 목록 */}

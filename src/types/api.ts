@@ -388,5 +388,9 @@ export interface AiChatResponse {
   }>;
   /** CLI 호출 불가 시 폴백 모드 여부. */
   isFallback?: boolean;
+  /** 폴백 사유 분류(`CLI_NOT_FOUND` | `SPAWN_FAILED` | `TIMEOUT` | `EXIT_ERROR` | `EMPTY_OUTPUT`). */
+  fallbackCode?: string;
+  /** 사용자에게 노출 가능한 조치 안내. stderr 원문은 담지 않는다. */
+  fallbackHint?: string;
 }
 
