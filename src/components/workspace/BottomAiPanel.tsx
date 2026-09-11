@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
+import { formatElapsed } from '@/lib/format-elapsed';
 import type { AiChatResponse } from '@/types/api';
 
 /**
@@ -30,20 +31,6 @@ const REQUEST_TIMEOUT_MS = 150_000;
 
 /** 진행 중 경과 시간 갱신 주기(ms). */
 const ELAPSED_TICK_MS = 100;
-
-/**
- * 경과 시간을 사람이 읽는 형태로. 1분 미만은 `12.3초`, 이상은 `1분 5.2초`.
- *
- * 표시 단위(0.1초)로 **먼저** 반올림한 뒤 분 경계를 판단한다.
- * 원값으로 분기하면 59.96초가 `60.0초`, 119.96초가 `1분 60.0초`로 표시된다.
- */
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.round(ms / 100) / 10;
-  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}초`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds - minutes * 60;
-  return `${minutes}분 ${seconds.toFixed(1)}초`;
-}
 
 export interface BottomAiPanelProps {
   /** 파일 칩 클릭 시 해당 마크다운 문서/폴더로 이동 */
@@ -101,7 +88,9 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
   useEffect(() => {
     if (startedAt === null) return;
 
-    setPendingElapsedMs(0);
+    // 리셋은 요청 시작 시점(handleSubmit)에서 한다 — effect 본문에서 setState 하면
+    // paint 이후에 리셋돼 다음 요청 첫 프레임에 이전 값이 잠깐 보이고,
+    // react-hooks/set-state-in-effect 규칙에도 걸린다.
     const timerId = setInterval(() => {
       setPendingElapsedMs(performance.now() - startedAt);
     }, ELAPSED_TICK_MS);
@@ -127,6 +116,7 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
 
     // 사용자가 전송을 누른 순간을 기준점으로 잡는다.
     const requestStartedAt = performance.now();
+    setPendingElapsedMs(0);
     setStartedAt(requestStartedAt);
 
     const controller = new AbortController();

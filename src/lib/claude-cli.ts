@@ -30,6 +30,7 @@ export interface AiChatResult {
 
 /** 폴백 사유 분류. 프론트에 그대로 노출해도 안전한 값만 쓴다(스택트레이스 금지). */
 export type ClaudeCliFailureCode =
+  | 'DISABLED'
   | 'CLI_NOT_FOUND'
   | 'SPAWN_FAILED'
   | 'TIMEOUT'
@@ -54,10 +55,21 @@ export class ClaudeCliError extends Error {
   }
 }
 
+/**
+ * AI 패널 기능 스위치. **기본 off.**
+ *
+ * 이 기능은 앱이 통제하지 못하는 외부 상태(맥미니의 CLI 설치·로그인·사용량)에 의존한다.
+ * 문제가 생겼을 때 재배포 없이 끌 수 있어야 한다.
+ * 경로 봉쇄 실측이 끝난 환경에서만 `AI_PANEL_ENABLED=true`로 켠다.
+ */
+export function isAiPanelEnabled(): boolean {
+  return process.env.AI_PANEL_ENABLED?.trim().toLowerCase() === 'true';
+}
+
 /** CLI 응답 대기 상한(ms). 도구 호출이 섞이면 30초로는 부족해 기본값을 넉넉히 잡는다. */
 const DEFAULT_TIMEOUT_MS = 120_000;
 
-function getTimeoutMs(): number {
+export function getTimeoutMs(): number {
   const raw = process.env.AI_CLI_TIMEOUT_MS;
   if (!raw) return DEFAULT_TIMEOUT_MS;
   const value = Number(raw);
@@ -115,7 +127,7 @@ const SECRET_ENV_KEYS: readonly string[] = [
 ];
 
 /** 시크릿을 뺀 자식 프로세스용 환경변수. */
-function childEnv(): NodeJS.ProcessEnv {
+export function childEnv(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of SECRET_ENV_KEYS) delete env[key];
 
@@ -184,7 +196,7 @@ export function getClaudeCliStatus(): { available: boolean; path: string | null 
  * 원문에는 절대경로나 API 응답 본문이 섞일 수 있어 그대로 노출하지 않는다(보안 불변식 8).
  * 대신 흔한 실패 유형만 판별해 사용자가 실제로 취할 수 있는 행동을 알려준다.
  */
-function describeFailure(raw: string, exitCode?: number | null): string {
+export function describeFailure(raw: string, exitCode?: number | null): string {
   if (/login|authenticat|credential|oauth|expired|unauthorized|api key/i.test(raw)) {
     return 'Claude CLI 인증이 만료된 것으로 보입니다. Mac mini 터미널에서 claude 로그인 상태를 확인하세요.';
   }
@@ -196,8 +208,38 @@ function describeFailure(raw: string, exitCode?: number | null): string {
     : `Claude CLI가 비정상 종료했습니다(exit ${exitCode}). 서버 로그를 확인하세요.`;
 }
 
+/**
+ * CLI에 넘길 argv를 만든다.
+ *
+ * ⚠️ `--allowed-tools`는 variadic(`<tools...>`) 옵션이라
+ * `--allowed-tools Read,Glob,Grep "<프롬프트>"`처럼 띄어 쓰면 **프롬프트까지 도구 이름으로
+ * 빨아들여** CLI가 "Input must be provided either through stdin or as a prompt argument"로
+ * 죽는다(실측). 반드시 `=` 형식으로 값을 고정하고, 프롬프트는 맨 마지막 단일 원소로 둔다.
+ *
+ * 도구는 읽기 전용만 허용한다 — 이 패널은 조회용이고, 쓰기는 앱의 에디터 경로로만 일어나야 한다.
+ */
+export function buildCliArgs(promptContext: string): string[] {
+  return [
+    '--print',
+    '--output-format',
+    'json',
+    // `--restricted`는 파일 도구를 **작업 디렉터리(= MARKDOWN_ROOT) 안으로 봉쇄**하고,
+    // 명령 실행 계열 도구와 WebFetch를 제거하며, user/project/local 설정 파일을 무시한다.
+    //
+    // 실측(2.1.220): 이 플래그가 없으면 `--allowed-tools=Read`만으로 cwd 바깥 절대경로가
+    // 그대로 읽힌다. 있으면 permission_denials에 기록되고 차단된다.
+    // 이 앱은 인터넷에 노출돼 있고 서버 프로세스가 `.env.local`을 읽을 수 있는 위치에서
+    // 돌기 때문에, 봉쇄는 선택이 아니라 전제다(보안 불변식 2).
+    '--restricted',
+    // 외부 MCP 서버 설정을 일절 끌어오지 않는다 — 앱이 통제하지 못하는 도구 표면을 막는다.
+    '--strict-mcp-config',
+    '--allowed-tools=Read,Glob,Grep',
+    promptContext,
+  ];
+}
+
 /** `--output-format json` 응답에서 실제 답변 텍스트를 뽑는다. */
-function extractAnswer(raw: string): { answer: string; isError: boolean } | null {
+export function extractAnswer(raw: string): { answer: string; isError: boolean } | null {
   const trimmed = raw.trim();
   if (!trimmed.startsWith('{')) return null;
   try {
@@ -217,6 +259,13 @@ export async function queryClaudeCli(userQuery: string): Promise<AiChatResult> {
   const trimmedQuery = userQuery.trim();
   if (!trimmedQuery) {
     throw new Error('검색어를 입력해 주세요.');
+  }
+
+  if (!isAiPanelEnabled()) {
+    throw new ClaudeCliError(
+      'DISABLED',
+      'AI 응답 기능이 꺼져 있습니다. 문서 검색 결과만 제공합니다.',
+    );
   }
 
   // 1. FTS5 인덱스를 통해 관련도 높은 마크다운 파일 1차 탐색
@@ -253,32 +302,24 @@ export async function queryClaudeCli(userQuery: string): Promise<AiChatResult> {
     );
   }
 
-  // CLI의 작업 디렉터리를 문서 루트로 고정한다 — 읽기 도구가 엉뚱한 곳(프로젝트 소스)을 뒤지지 않게.
+  // CLI의 작업 디렉터리를 문서 루트로 고정한다.
+  //
+  // `--restricted` 하에서 cwd는 단순한 시작 위치가 아니라 **파일 도구의 봉쇄 경계**다.
+  // 여기에 `process.cwd()` 폴백을 두면 경계가 `.env.local`이 있는 프로젝트 루트로
+  // 내려앉는다 — 정확히 막으려던 것을 열어주는 폴백이다. CLAUDE.md의 "하드코딩 폴백
+  // 금지"에도 어긋나므로, 환경변수가 잘못됐으면 폴백 없이 실패시킨다.
   let cwd: string;
   try {
     cwd = getServerEnv().MARKDOWN_ROOT;
   } catch {
-    cwd = process.cwd();
+    throw new ClaudeCliError('SPAWN_FAILED', '서버 환경변수가 올바르지 않습니다.');
   }
 
   const timeoutMs = getTimeoutMs();
 
   return new Promise((resolve, reject) => {
-    // Non-interactive print 모드로 claude CLI 실행.
-    // --output-format json 은 종료코드만으로 알기 어려운 실패(is_error)를 구조적으로 알려준다.
-    // 도구는 읽기 전용만 허용한다 — 이 패널은 조회용이고, 쓰기는 앱의 에디터 경로로만 일어나야 한다.
-    //
-    // ⚠️ `--allowed-tools` 는 variadic(`<tools...>`) 옵션이라
-    // `--allowed-tools Read,Glob,Grep "<프롬프트>"` 로 띄어 쓰면 **프롬프트까지 도구 이름으로
-    // 빨아들여** CLI가 "Input must be provided either through stdin or as a prompt argument"
-    // 로 죽는다(실측). 반드시 `=` 형식으로 값을 고정한다.
-    const args = [
-      '--print',
-      '--output-format',
-      'json',
-      '--allowed-tools=Read,Glob,Grep',
-      promptContext,
-    ];
+    // Non-interactive print 모드로 claude CLI 실행 (인자 구성 근거는 buildCliArgs 참고).
+    const args = buildCliArgs(promptContext);
 
     // ⚠️ shell: true 를 쓰지 않는다. shell 을 켜면 command+args 가 따옴표 없이
     // 한 줄로 이어붙어, 공백·줄바꿈이 있는 promptContext 가 셸에서 단어 분리되어
