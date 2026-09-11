@@ -8,7 +8,16 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { AlertTriangle, Bot, ChevronDown, ChevronUp, FileText, Send, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  FileText,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 import type { AiChatResponse } from '@/types/api';
 
 /**
@@ -17,6 +26,18 @@ import type { AiChatResponse } from '@/types/api';
  * "사유 없는 네트워크 오류" 대신 원인이 적힌 답변이 오도록 한다.
  */
 const REQUEST_TIMEOUT_MS = 150_000;
+
+/** 진행 중 경과 시간 갱신 주기(ms). */
+const ELAPSED_TICK_MS = 100;
+
+/** 경과 시간을 사람이 읽는 형태로. 1분 미만은 `12.3초`, 이상은 `1분 5.2초`. */
+function formatElapsed(ms: number): string {
+  const totalSeconds = ms / 1000;
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}초`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds - minutes * 60;
+  return `${minutes}분 ${seconds.toFixed(1)}초`;
+}
 
 export interface BottomAiPanelProps {
   /** 파일 칩 클릭 시 해당 마크다운 문서/폴더로 이동 */
@@ -29,6 +50,11 @@ interface MessageItem {
   text: string;
   relatedFiles?: Array<{ path: string; snippet?: string }>;
   isFallback?: boolean;
+  /**
+   * 질문 전송 시점부터 이 답변이 패널에 렌더될 때까지 걸린 시간(ms).
+   * 서버 처리 시간이 아니라 사용자가 체감하는 왕복 시간이다.
+   */
+  elapsedMs?: number;
 }
 
 export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
@@ -43,6 +69,11 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
     },
   ]);
 
+  /** 진행 중인 요청의 시작 시각(`performance.now()` 기준). null이면 대기 중인 요청 없음. */
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  /** 진행 중인 요청의 경과 시간(ms). 답변을 기다리는 동안 실시간으로 올라간다. */
+  const [pendingElapsedMs, setPendingElapsedMs] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 메시지 추가 시 스크롤 하단 자동 이동
@@ -51,6 +82,19 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen]);
+
+  // 답변을 기다리는 동안 경과 시간을 틱 단위로 갱신한다.
+  // (벽시계가 아니라 performance.now 기준이라 시스템 시각이 바뀌어도 흔들리지 않는다.)
+  useEffect(() => {
+    if (startedAt === null) return;
+
+    setPendingElapsedMs(0);
+    const timerId = setInterval(() => {
+      setPendingElapsedMs(performance.now() - startedAt);
+    }, ELAPSED_TICK_MS);
+
+    return () => clearInterval(timerId);
+  }, [startedAt]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +111,10 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
     setMessages((prev) => [...prev, newMsg]);
     setQuery('');
     setIsLoading(true);
+
+    // 사용자가 전송을 누른 순간을 기준점으로 잡는다.
+    const requestStartedAt = performance.now();
+    setStartedAt(requestStartedAt);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -99,6 +147,7 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
           text: data.answer,
           relatedFiles: data.relatedFiles,
           isFallback: data.isFallback,
+          elapsedMs: performance.now() - requestStartedAt,
         },
       ]);
     } catch (err) {
@@ -115,10 +164,12 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
           sender: 'ai',
           text: `오류가 발생했습니다: ${reason}`,
           isFallback: true,
+          elapsedMs: performance.now() - requestStartedAt,
         },
       ]);
     } finally {
       clearTimeout(timeoutId);
+      setStartedAt(null);
       setIsLoading(false);
     }
   };
@@ -199,13 +250,25 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* 전송 → 표시까지 걸린 왕복 시간 */}
+                  {msg.elapsedMs !== undefined && (
+                    <div className="flex items-center gap-1 mt-1 px-1 text-[11px] text-slate-500">
+                      <Clock className="w-3 h-3" />
+                      <span>응답까지 {formatElapsed(msg.elapsedMs)}</span>
+                    </div>
+                  )}
                 </div>
               ))}
 
               {isLoading && (
                 <div className="flex items-center gap-2 text-slate-400 text-xs italic pl-2">
                   <Bot className="w-4 h-4 animate-bounce text-indigo-400" />
-                  Mac mini Claude AI가 답변을 생성 중입니다...
+                  <span>Mac mini Claude AI가 답변을 생성 중입니다...</span>
+                  {/* 응답이 30초를 넘기는 일이 흔해서, 멈춘 건지 기다리는 건지 보이게 한다. */}
+                  <span className="not-italic font-mono text-slate-500 tabular-nums">
+                    {formatElapsed(pendingElapsedMs)}
+                  </span>
                 </div>
               )}
               <div ref={messagesEndRef} />
