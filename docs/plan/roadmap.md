@@ -80,13 +80,14 @@
 | ✅ | 폴백 원인 4종 수정 (타임아웃 · stdin · `--allowed-tools=` · `is_error`) | backend-dev | `ba6052a` |
 | ✅ | 검증 리포트 2종 | frontend-validator / backend-validator | [frontend](../valid/frontend-ai-panel-validation.md) / [backend](../valid/backend-ai-panel-validation.md) |
 | ✅ | 검증 FAIL 1건(raw fetch → `apiFetch`) + WARN 4건 수정 | frontend-dev / backend-dev | `96f1a56` |
-| 🔵 | **실행 게이트** (typecheck / lint / test / build) | 사용자(맥미니) | backlog P0 |
-| 🔵 | **경로 봉쇄 실측** (CLI가 `MARKDOWN_ROOT` 밖을 읽는지) | 사용자(맥미니) | backlog P0 |
-| ⬜ | CLI 하드닝 + `AI_PANEL_ENABLED` 플래그 | backend-dev | backlog P1-29 |
+| 🔵 | **실행 게이트** (typecheck / lint / test / build) | 사용자(맥미니) | [stage-6-macmini-gate.md §1](stage-6-macmini-gate.md) · backlog P0 |
+| 🔵 | **경로 봉쇄 실측** (CLI가 `MARKDOWN_ROOT` 밖을 읽는지) | 사용자(맥미니) | [stage-6-macmini-gate.md §2](stage-6-macmini-gate.md) · backlog P0 |
+| ✅ | CLI 하드닝(`--restricted`) + `AI_PANEL_ENABLED` 플래그 | backend-dev | `89ea325` |
 | ⬜ | `/api/ai/chat` rate limit | backend-dev | backlog P1-28 |
 | ⬜ | 완료 기록 | tech-lead | `docs/complete-work/stage-6-ai-panel-complete.md` |
 
-**머지 차단 중.** 선행 조건 체크리스트는 [tech-lead-stage-6-ai-panel-induction.md §2](../agent-work/tech-lead-stage-6-ai-panel-induction.md) 참조.
+**머지 차단 중.** 맥미니에서 실행할 항목은 **[stage-6-macmini-gate.md](stage-6-macmini-gate.md)** 에 명령까지 정리돼 있다.
+판정 근거와 배경은 [tech-lead-stage-6-ai-panel-induction.md](../agent-work/tech-lead-stage-6-ai-panel-induction.md) 참조.
 
 ---
 
