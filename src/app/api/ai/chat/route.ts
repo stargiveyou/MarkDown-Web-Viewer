@@ -2,19 +2,33 @@
  * `POST /api/ai/chat` -- Mac mini Claude Max CLI 기반 AI 파일 탐색 및 질의응답 API.
  *
  * 요청: JSON `{ query: string }`
- * 응답: `AiChatResponse` = `{ answer: string, relatedFiles: Array<{ path: string, snippet?: string }> }`
+ * 응답: `AiChatResponse` = `{ answer, relatedFiles, isFallback?, fallbackCode?, fallbackHint? }`
+ *
+ * `GET /api/ai/chat` -- CLI 연동 상태 진단(경로 탐지 여부만 반환).
  *
  * 보안 및 인증:
  *   - middleware를 통해 세션 보호됨 (미인증 시 401).
- *   - CLI 실행 실패 시 FTS5 검색 기반의 스마트 폴백 지원.
+ *   - CLI 실행 실패 시 FTS5 검색 기반의 스마트 폴백 지원. 실패 **사유**는 함께 반환하되
+ *     stderr 원문·스택트레이스는 서버 로그에만 남긴다(보안 불변식 8).
  */
 
 import { NextResponse } from 'next/server';
 import { apiError, internalError } from '@/lib/api-response';
-import { queryClaudeCli } from '@/lib/claude-cli';
+import { ClaudeCliError, getClaudeCliStatus, queryClaudeCli } from '@/lib/claude-cli';
 import { search } from '@/lib/search-index';
 
 export const runtime = 'nodejs';
+
+/** CLI 연동 상태 확인용. 절대경로는 내부 정보이므로 노출하지 않는다. */
+export async function GET(): Promise<NextResponse> {
+  const status = getClaudeCliStatus();
+  return NextResponse.json({
+    cliAvailable: status.available,
+    hint: status.available
+      ? null
+      : 'claude 실행 파일을 찾지 못했습니다. .env.local의 CLAUDE_CLI_PATH를 확인하세요.',
+  });
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -33,8 +47,25 @@ export async function POST(request: Request): Promise<NextResponse> {
       const result = await queryClaudeCli(query);
       return NextResponse.json(result);
     } catch (cliError) {
-      const reason = cliError instanceof Error ? cliError.message : String(cliError);
-      console.warn('[AI Chat] Claude CLI 호출 실패 (폴백 모드 전환):', reason);
+      let code = 'SPAWN_FAILED';
+      // 분류되지 않은 오류의 원문은 절대 클라이언트로 내보내지 않는다 —
+      // 경로·환경 정보가 섞여 나올 수 있다(보안 불변식 8). 사유는 서버 로그에만.
+      let hint = 'Claude CLI 호출에 실패했습니다. 서버 로그를 확인하세요.';
+      let detail: string | undefined;
+
+      if (cliError instanceof ClaudeCliError) {
+        code = cliError.code;
+        hint = cliError.hint;
+        detail = cliError.detail;
+      } else {
+        detail = cliError instanceof Error ? cliError.stack : String(cliError);
+      }
+
+      // 원문(stderr 등)은 서버 로그 전용.
+      console.warn(
+        `[AI Chat] Claude CLI 호출 실패 (${code}) — 폴백 모드 전환: ${hint}`,
+        detail ? `\n  detail: ${detail}` : '',
+      );
 
       // CLI 호출 불가 시 FTS5 검색 인덱스 기반의 폴백 응답 구성
       const ftsResults = search(query);
@@ -43,7 +74,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         snippet: r.snippet,
       }));
 
-      let fallbackAnswer = `(Mac mini Claude CLI 연결 대기 상태)\n\n입력하신 "${query}"와(과) 연관된 마크다운 파일 ${relatedFiles.length}건을 검색했습니다.`;
+      let fallbackAnswer = `AI 응답을 받지 못해 문서 검색 결과로 대신합니다.\n사유: ${hint}\n\n입력하신 "${query}"와(과) 연관된 마크다운 파일 ${relatedFiles.length}건을 검색했습니다.`;
       if (relatedFiles.length > 0) {
         fallbackAnswer += `\n하단의 관련 파일 목록에서 원하는 문서를 선택하여 읽거나 편집하실 수 있습니다.`;
       } else {
@@ -54,6 +85,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         answer: fallbackAnswer,
         relatedFiles,
         isFallback: true,
+        fallbackCode: code,
+        fallbackHint: hint,
       });
     }
   } catch (error) {
