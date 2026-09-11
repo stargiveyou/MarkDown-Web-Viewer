@@ -14,7 +14,12 @@
 
 import { NextResponse } from 'next/server';
 import { apiError, internalError } from '@/lib/api-response';
-import { ClaudeCliError, getClaudeCliStatus, queryClaudeCli } from '@/lib/claude-cli';
+import {
+  ClaudeCliError,
+  getClaudeCliStatus,
+  isAiPanelEnabled,
+  queryClaudeCli,
+} from '@/lib/claude-cli';
 import { search } from '@/lib/search-index';
 
 export const runtime = 'nodejs';
@@ -22,11 +27,16 @@ export const runtime = 'nodejs';
 /** CLI 연동 상태 확인용. 절대경로는 내부 정보이므로 노출하지 않는다. */
 export async function GET(): Promise<NextResponse> {
   const status = getClaudeCliStatus();
+  const enabled = isAiPanelEnabled();
+
   return NextResponse.json({
+    enabled,
     cliAvailable: status.available,
-    hint: status.available
-      ? null
-      : 'claude 실행 파일을 찾지 못했습니다. .env.local의 CLAUDE_CLI_PATH를 확인하세요.',
+    hint: !enabled
+      ? 'AI 응답이 꺼져 있습니다. .env.local에 AI_PANEL_ENABLED=true를 설정하세요.'
+      : status.available
+        ? null
+        : 'claude 실행 파일을 찾지 못했습니다. .env.local의 CLAUDE_CLI_PATH를 확인하세요.',
   });
 }
 
