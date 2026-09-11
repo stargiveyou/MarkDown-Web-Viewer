@@ -123,8 +123,11 @@ export async function apiFetch<T>(input: string, init?: RequestInit): Promise<T>
       ...init,
       headers: buildHeaders(init),
     });
-  } catch {
-    // 네트워크 단절·CORS·중단. 서버 내부 정보는 노출하지 않는다.
+  } catch (error) {
+    // 호출부가 건 AbortController 중단은 네트워크 실패가 아니다.
+    // 502로 접어버리면 "서버에 연결할 수 없습니다"가 떠서 원인을 오도하므로 그대로 올린다.
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    // 네트워크 단절·CORS. 서버 내부 정보는 노출하지 않는다.
     throw new ApiRequestError(502, DEFAULT_MESSAGES[502]);
   }
 

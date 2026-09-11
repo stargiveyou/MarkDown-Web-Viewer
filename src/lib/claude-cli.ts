@@ -99,6 +99,32 @@ function augmentedPath(): string {
   return Array.from(new Set([...current, ...extra])).join(path.delimiter);
 }
 
+/**
+ * 자식 프로세스에 넘기지 않을 환경변수.
+ *
+ * CLI 는 이 값들이 전혀 필요 없는데, 자식 프로세스의 env 는 `ps -E` 같은 수단으로
+ * 읽히기 쉽다. 앱이 소유한 시크릿을 남의 프로세스 주소공간에 복사할 이유가 없다(보안 불변식 6).
+ *
+ * `src/lib/env.ts`의 `ServerEnv`에 시크릿을 추가하면 여기에도 추가한다.
+ */
+const SECRET_ENV_KEYS: readonly string[] = [
+  'SESSION_SECRET',
+  'SESSION_PASSWORD',
+  'DISCORD_WEBHOOK_URL',
+  'SLACK_WEBHOOK_URL',
+];
+
+/** 시크릿을 뺀 자식 프로세스용 환경변수. */
+function childEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of SECRET_ENV_KEYS) delete env[key];
+
+  env.PATH = augmentedPath();
+  // 비인터랙티브 터미널 힌트
+  env.TERM = 'dumb';
+  return env;
+}
+
 let resolvedCli: string | null | undefined;
 
 /**
@@ -150,6 +176,24 @@ export function resetClaudeCliCacheForTest(): void {
 export function getClaudeCliStatus(): { available: boolean; path: string | null } {
   const cli = resolveClaudeCli();
   return { available: cli !== null, path: cli };
+}
+
+/**
+ * CLI 실패 원문을 보고 **고정 문구**로 된 조치 안내를 고른다.
+ *
+ * 원문에는 절대경로나 API 응답 본문이 섞일 수 있어 그대로 노출하지 않는다(보안 불변식 8).
+ * 대신 흔한 실패 유형만 판별해 사용자가 실제로 취할 수 있는 행동을 알려준다.
+ */
+function describeFailure(raw: string, exitCode?: number | null): string {
+  if (/login|authenticat|credential|oauth|expired|unauthorized|api key/i.test(raw)) {
+    return 'Claude CLI 인증이 만료된 것으로 보입니다. Mac mini 터미널에서 claude 로그인 상태를 확인하세요.';
+  }
+  if (/balance|credit|quota|usage limit|rate.?limit|overloaded/i.test(raw)) {
+    return 'Claude 사용량 한도 또는 과부하로 보입니다. 잠시 후 다시 시도하거나 잔여 사용량을 확인하세요.';
+  }
+  return exitCode === undefined || exitCode === null
+    ? 'Claude CLI가 오류를 반환했습니다. 서버 로그를 확인하세요.'
+    : `Claude CLI가 비정상 종료했습니다(exit ${exitCode}). 서버 로그를 확인하세요.`;
 }
 
 /** `--output-format json` 응답에서 실제 답변 텍스트를 뽑는다. */
@@ -246,12 +290,7 @@ export async function queryClaudeCli(userQuery: string): Promise<AiChatResult> {
     const child = spawn(cliExecutable, args, {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        PATH: augmentedPath(),
-        // 비인터랙티브 터미널 힌트
-        TERM: 'dumb',
-      },
+      env: childEnv(),
     });
 
     let stdoutData = '';
@@ -320,26 +359,21 @@ export async function queryClaudeCli(userQuery: string): Promise<AiChatResult> {
       const detail = (stderrData || plain).slice(0, 2_000);
 
       if (parsed?.isError) {
+        // CLI가 만든 오류 원문에는 절대경로·API 응답 본문이 섞일 수 있다.
+        // 그대로 내보내지 않고 분류된 고정 문구만 노출한다(보안 불변식 8). 원문은 detail로.
         settleReject(
           new ClaudeCliError(
             'EXIT_ERROR',
-            `Claude CLI가 오류를 반환했습니다: ${parsed.answer.slice(0, 200)}`,
-            detail,
+            describeFailure(parsed.answer),
+            `${parsed.answer.slice(0, 1_000)}\n${detail}`,
           ),
         );
         return;
       }
 
       if (code !== 0) {
-        const looksLikeAuth = /login|authenticat|credential|api key|oauth|expired/i.test(detail);
         settleReject(
-          new ClaudeCliError(
-            'EXIT_ERROR',
-            looksLikeAuth
-              ? 'Claude CLI 인증이 만료된 것으로 보입니다. Mac mini 터미널에서 claude 로그인 상태를 확인하세요.'
-              : `Claude CLI가 비정상 종료했습니다(exit ${code}). 서버 로그를 확인하세요.`,
-            detail,
-          ),
+          new ClaudeCliError('EXIT_ERROR', describeFailure(detail, code), detail),
         );
         return;
       }

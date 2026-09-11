@@ -18,6 +18,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
+import { apiFetch, toApiRequestError } from '@/lib/fetcher';
 import type { AiChatResponse } from '@/types/api';
 
 /**
@@ -30,9 +31,14 @@ const REQUEST_TIMEOUT_MS = 150_000;
 /** 진행 중 경과 시간 갱신 주기(ms). */
 const ELAPSED_TICK_MS = 100;
 
-/** 경과 시간을 사람이 읽는 형태로. 1분 미만은 `12.3초`, 이상은 `1분 5.2초`. */
+/**
+ * 경과 시간을 사람이 읽는 형태로. 1분 미만은 `12.3초`, 이상은 `1분 5.2초`.
+ *
+ * 표시 단위(0.1초)로 **먼저** 반올림한 뒤 분 경계를 판단한다.
+ * 원값으로 분기하면 59.96초가 `60.0초`, 119.96초가 `1분 60.0초`로 표시된다.
+ */
 function formatElapsed(ms: number): string {
-  const totalSeconds = ms / 1000;
+  const totalSeconds = Math.round(ms / 100) / 10;
   if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}초`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds - minutes * 60;
@@ -49,7 +55,14 @@ interface MessageItem {
   sender: 'user' | 'ai';
   text: string;
   relatedFiles?: Array<{ path: string; snippet?: string }>;
-  isFallback?: boolean;
+  /**
+   * 경고 표시 종류.
+   * - `fallback`: 서버까지는 갔으나 CLI 응답을 못 받아 검색 결과로 대체된 답변
+   * - `error`: 요청 자체가 실패(네트워크 단절·중단·4xx/5xx)
+   *
+   * 둘을 구분하지 않으면 오프라인 상태에서도 "Claude CLI 응답 없음"이 떠 원인을 오도한다.
+   */
+  variant?: 'fallback' | 'error';
   /**
    * 질문 전송 시점부터 이 답변이 패널에 렌더될 때까지 걸린 시간(ms).
    * 서버 처리 시간이 아니라 사용자가 체감하는 왕복 시간이다.
@@ -120,24 +133,12 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      // 전역 래퍼를 경유한다 — 401 `?next=` 리다이렉트와 429 토스트가 여기에 들어 있다.
+      const data = await apiFetch<AiChatResponse>('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: trimmed }),
         signal: controller.signal,
       });
-
-      if (res.status === 401) {
-        // 세션 만료 — 미들웨어 정책과 동일하게 로그인으로 돌려보낸다.
-        window.location.href = '/login';
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error(`AI 질의 응답 요청에 실패했습니다. (HTTP ${res.status})`);
-      }
-
-      const data: AiChatResponse = await res.json();
 
       setMessages((prev) => [
         ...prev,
@@ -146,24 +147,38 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
           sender: 'ai',
           text: data.answer,
           relatedFiles: data.relatedFiles,
-          isFallback: data.isFallback,
+          variant: data.isFallback ? 'fallback' : undefined,
           elapsedMs: performance.now() - requestStartedAt,
         },
       ]);
     } catch (err) {
-      const reason =
-        err instanceof DOMException && err.name === 'AbortError'
-          ? `응답이 ${Math.round(REQUEST_TIMEOUT_MS / 1000)}초 안에 오지 않아 요청을 중단했습니다.`
-          : err instanceof Error
-            ? err.message
-            : '요청을 처리할 수 없습니다.';
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `응답이 ${Math.round(REQUEST_TIMEOUT_MS / 1000)}초 안에 오지 않아 요청을 중단했습니다.`,
+            variant: 'error',
+            elapsedMs: performance.now() - requestStartedAt,
+          },
+        ]);
+        return;
+      }
+
+      const apiError = toApiRequestError(err);
+
+      // 401은 래퍼가 이미 /login으로 보냈다. 사라질 화면에 오류 말풍선을 남기지 않는다.
+      if (apiError.code === 401) return;
+
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: `오류가 발생했습니다: ${reason}`,
-          isFallback: true,
+          // 서버가 준 ApiError.message를 그대로 쓴다("질문은 2자 이상 입력해 주세요." 등).
+          text: `오류가 발생했습니다: ${apiError.message}`,
+          variant: 'error',
           elapsedMs: performance.now() - requestStartedAt,
         },
       ]);
@@ -218,15 +233,15 @@ export function BottomAiPanel({ onSelectFile }: BottomAiPanelProps) {
                     className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                       msg.sender === 'user'
                         ? 'bg-indigo-600 text-white rounded-br-none'
-                        : msg.isFallback
+                        : msg.variant
                           ? 'bg-amber-950/40 text-amber-100 border border-amber-600/40 rounded-bl-none'
                           : 'bg-slate-800 text-slate-200 border border-slate-700/60 rounded-bl-none'
                     }`}
                   >
-                    {msg.isFallback && (
+                    {msg.variant && (
                       <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold text-amber-400">
                         <AlertTriangle className="w-3.5 h-3.5" />
-                        Claude CLI 응답 없음
+                        {msg.variant === 'fallback' ? 'Claude CLI 응답 없음' : '요청 실패'}
                       </div>
                     )}
                     <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
