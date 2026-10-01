@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Folder, FileText, File, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
+import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
 import type { FileEntry, FileVersion, FileVersionsResponse } from '@/types/api';
 
 export interface BentoGridProps {
@@ -144,8 +145,9 @@ function FeaturedFolderCard({
         </div>
       </button>
 
-      {/* 액션 버튼 (이동 + 삭제) */}
+      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <FolderDownloadButton subpath={entry.subpath} name={entry.name} />
         {onMoveClick && (
           <button
             type="button"
@@ -227,8 +229,9 @@ function FolderCard({
         )}
       </button>
 
-      {/* 액션 버튼 (이동 + 삭제) */}
+      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <FolderDownloadButton subpath={entry.subpath} name={entry.name} />
         {onMoveClick && (
           <button
             type="button"

@@ -207,3 +207,35 @@
   - [optimize-stage-5-report.md](../valid/optimize-stage-5-report.md) — 오류 3건(중간 2, 낮음 1), 성능 개선 1건
   - [qa-stage-5-validation.md](../valid/qa-stage-5-validation.md) — **PASS (FAIL 0건, UNVERIFIED 0건)**
 - 최종 판정: **Stage 5 완료 승인. 전체 5단계 로드맵 완료.**
+
+### 2026-10-01 — 폴더 ZIP 다운로드 (웹 UI 노출 + 라우트 버그 수정)
+- 담당: 직접 작업 (서브에이전트 미사용)
+- 배경: `GET /api/download`는 이미 폴더 ZIP 스트리밍을 구현하고 있었으나,
+  워크스페이스가 렌더하는 `BentoGrid`에 다운로드 버튼이 없어 **UI에서 도달할 수 없었다**.
+  (버튼이 있는 `GridView`는 현재 워크스페이스에서 쓰이지 않는다.)
+- 산출물:
+  - [src/components/workspace/FolderDownloadButton.tsx](../../src/components/workspace/FolderDownloadButton.tsx) (신규)
+    — 압축 중 상태 표시 + 401/429 토스트 처리, `card`/`toolbar` 2종 variant
+  - [src/components/workspace/BentoGrid.tsx](../../src/components/workspace/BentoGrid.tsx)
+    — `FeaturedFolderCard`·`FolderCard` 액션 영역에 ZIP 다운로드 버튼 추가
+  - [src/app/workspace/page.tsx](../../src/app/workspace/page.tsx)
+    — 헤더에 "현재 폴더 ZIP 다운로드" 버튼 (루트에서는 숨겨 전체 저장소 압축을 막는다)
+  - [src/app/api/download/route.ts](../../src/app/api/download/route.ts) — 버그 3건 수정
+  - [src/app/api/download/folder-zip.test.ts](../../src/app/api/download/folder-zip.test.ts) (신규, 15 테스트)
+- 수정한 라우트 버그:
+  1. **심볼릭 링크 하나가 폴더 전체 다운로드를 깨뜨렸다.** `collectFiles`가 타입 확인보다 먼저
+     `assertRealPathUnderRoot`를 호출해, 루트 밖을 가리키는 링크가 있으면 400으로 실패했다.
+     링크는 `withFileTypes`(lstat) 기준으로 어차피 ZIP에 담기지 않으므로 건너뛰도록 바꿨다.
+     (회귀 테스트로 수정 전 실패를 확인했다 — 5개 테스트가 깨진다.)
+  2. **ZIP 엔트리 이름에 `\` 구분자가 샐 수 있었다.** `path.relative`는 Windows에서 `\`를 준다.
+     APPNOTE 4.4.17에 따라 항상 `/`로 정규화한다.
+  3. **backpressure 부재.** ZIP 전체가 메모리에 쌓일 수 있어 `pull`/`pause`/`resume`을 연결했다.
+     `archive.finalize()`의 unhandled rejection도 막았다.
+- 검증: `npx tsc --noEmit` 통과, 변경 파일 `eslint` 0건, 신규 테스트 14 통과 / 1 skip,
+  `npm run build` 성공.
+  - skip 1건은 Windows에서 **파일** symlink 생성에 관리자 권한이 필요한 탓이다.
+    디렉터리 링크(junction)로 동일 코드 경로를 양쪽 플랫폼에서 검증한다.
+  - 기존 `path-safety.test.ts`·`search-index.test.ts`는 Windows에서 실패한다
+    (`env.ts`가 MARKDOWN_ROOT에 POSIX 절대경로를 요구 + symlink EPERM).
+    **이번 변경과 무관하며** clean checkout에서 동일하게 실패함을 확인했다. 맥미니에서 재확인 필요.
+- 미확인: `.env.local`이 맥미니에만 있어 이 작업 환경에서 앱을 띄운 실클릭 검증은 하지 못했다.

@@ -13,6 +13,7 @@ import { UploadModal } from '@/components/upload/UploadModal';
 import { Sidebar } from '@/components/workspace/Sidebar';
 import { Breadcrumb } from '@/components/workspace/Breadcrumb';
 import { BentoGrid } from '@/components/workspace/BentoGrid';
+import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
 import { CreateFolderModal } from '@/components/workspace/CreateFolderModal';
 import { MoveModal } from '@/components/workspace/MoveModal';
 import { SearchBar } from '@/components/workspace/SearchBar';
@@ -371,6 +372,15 @@ function WorkspacePageInner() {
                   </option>
                 ))}
               </select>
+
+              {/* 현재 폴더 ZIP 다운로드 — 루트에서는 숨긴다 (전체 저장소 압축 방지) */}
+              {!isSearchMode && currentPath !== '' && (
+                <FolderDownloadButton
+                  subpath={currentPath}
+                  name={currentPath.split('/').filter(Boolean).pop() ?? 'folder'}
+                  variant="toolbar"
+                />
+              )}
 
               {/* 새 폴더 버튼 */}
               <button

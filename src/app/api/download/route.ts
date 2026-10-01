@@ -64,12 +64,20 @@ async function collectFiles(
   for (const entry of entries) {
     if (EXCLUDED_NAMES.has(entry.name) || entry.name.startsWith('.')) continue;
 
+    // 심볼릭 링크는 따라가지 않고 건너뛴다 (보안 불변식 2).
+    // `withFileTypes`는 lstat 기준이라 링크는 isFile()/isDirectory()가 모두 false다.
+    // 즉 어차피 ZIP에 담기지 않으므로, 루트를 벗어나는 링크 하나 때문에
+    // 폴더 전체 다운로드를 400으로 실패시킬 이유가 없다.
+    if (entry.isSymbolicLink()) continue;
+
     const absolutePath = path.join(dirPath, entry.name);
 
-    // 심볼릭 링크 탈출 차단 (보안 불변식 2)
     await assertRealPathUnderRoot(absolutePath);
 
-    const relativePath = path.relative(baseDir, absolutePath);
+    // ZIP 엔트리 이름은 항상 `/` 구분자여야 한다(APPNOTE 4.4.17).
+    // Windows의 `path.relative`는 `\`를 주므로 그대로 쓰면 압축 해제 시
+    // 폴더가 분리되지 않고 이름에 `\`가 박힌 파일 하나로 풀린다.
+    const relativePath = path.relative(baseDir, absolutePath).split(path.sep).join('/');
 
     if (entry.isDirectory()) {
       const nested = await collectFiles(absolutePath, baseDir);
@@ -146,10 +154,15 @@ export async function GET(request: Request): Promise<NextResponse | Response> {
       // archiver → Node Readable → Web ReadableStream
       const nodeStream = archive as unknown as Readable;
 
+      // 소비 속도에 맞춰 pause/resume한다. 이 backpressure가 없으면 ZIP 전체가
+      // 메모리에 쌓여, 큰 폴더를 느린 회선(ngrok)으로 내려줄 때 RSS가 폭증한다.
       const webStream = new ReadableStream({
         start(controller) {
           nodeStream.on('data', (chunk: Buffer) => {
             controller.enqueue(new Uint8Array(chunk));
+            if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+              nodeStream.pause();
+            }
           });
           nodeStream.on('end', () => {
             controller.close();
@@ -158,13 +171,18 @@ export async function GET(request: Request): Promise<NextResponse | Response> {
             controller.error(err);
           });
         },
+        pull() {
+          nodeStream.resume();
+        },
         cancel() {
           archive.abort();
         },
       });
 
       // finalize를 호출해야 실제 압축이 시작된다.
-      archive.finalize();
+      // 실패는 위의 'error' 이벤트가 controller.error로 전달하므로,
+      // 여기서는 unhandled rejection만 막는다.
+      void archive.finalize().catch(() => {});
 
       return new Response(webStream, {
         status: 200,
