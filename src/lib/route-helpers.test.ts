@@ -1,10 +1,14 @@
 /**
  * route-helpers.ts 유닛 테스트.
+ *
+ * `path-safety.ts`의 `getRoot()`는 아직 캐시하지 않으므로(backlog 10번
+ * "getRoot()/realpath 캐싱" 미구현) 루트 캐시 리셋은 필요하지 않다.
+ * 그 항목을 구현하면 `resetServerEnvCacheForTest()` 옆에 캐시 무효화를 함께 넣는다.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resetServerEnvCacheForTest } from '@/lib/env';
-import { PathSafetyError, resetRootCacheForTest } from '@/lib/path-safety';
+import { PathSafetyError } from '@/lib/path-safety';
 import { handleRouteError, isEnoent } from './route-helpers';
 
 beforeAll(() => {
@@ -16,12 +20,10 @@ beforeAll(() => {
   process.env.RATE_LIMIT_MAX = '10';
   process.env.RATE_LIMIT_WINDOW_SEC = '60';
   resetServerEnvCacheForTest();
-  resetRootCacheForTest();
 });
 
 afterAll(() => {
   resetServerEnvCacheForTest();
-  resetRootCacheForTest();
 });
 
 describe('handleRouteError', () => {
