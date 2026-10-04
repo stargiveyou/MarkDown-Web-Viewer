@@ -8,7 +8,11 @@
 > 판정 근거와 배경: [tech-lead-stage-6-ai-panel-induction.md](../agent-work/tech-lead-stage-6-ai-panel-induction.md)
 > (조건부 승인 — PR 개설 가능, **머지는 차단**)
 >
-> **하나라도 실패하면 머지하지 않는다.** 실패 항목은 [backlog.md](backlog.md)의
+> ⚠️ **2026-09-11 `8408ac5`에서 이 게이트를 통과하지 않은 채 main에 병합됐다.** 이제 이 목록은 머지 게이트가 아니라
+> **`AI_PANEL_ENABLED=true` 운영 활성화 게이트**로 읽는다. 아래 `git checkout` 대상도 `main`으로 바꿔 실행한다.
+> §1 G-1~G-5는 2026-10-04 Linux(Node 22.22.0)에서 전부 통과했다([progress.md](progress.md) 참조) — 맥미니 재확인 필요.
+>
+> **하나라도 실패하면 `AI_PANEL_ENABLED`를 켜지 않는다.** 실패 항목은 [backlog.md](backlog.md)의
 > 해당 P0 항목으로 되돌리고, 고친 뒤 이 목록을 처음부터 다시 돌린다.
 
 ---

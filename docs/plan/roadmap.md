@@ -18,51 +18,51 @@
 
 > 완료 기록: [stage-0-tech-lead-complete.md](../complete-work/stage-0-tech-lead-complete.md)
 
-## Stage 1 — 인증 + 웹 업로드(로컬 저장)
+## Stage 1 — 인증 + 웹 업로드(로컬 저장) ✅ **완료 2026-07-24**
 | 상태 | 작업 | 담당 | 산출물 |
 |------|------|------|--------|
-| ⬜ | 경로 안전 유틸 + traversal 유닛 테스트 | security-auth | `src/lib/path-safety.ts` |
-| ⬜ | 세션 미들웨어 (전 페이지·API 보호) | security-auth | `src/middleware.ts` |
-| ⬜ | Rate limiter (upload / share) | security-auth | `src/lib/rate-limit.ts` |
-| ⬜ | `POST /api/auth/login` (timing-safe) / `logout` | backend-dev | 라우트 핸들러 |
-| ⬜ | `POST /api/upload` — 검증 + atomic write | backend-dev | 라우트 핸들러 |
-| ⬜ | `/login` 페이지 + 전역 fetch 래퍼(401/429) | frontend-dev | 페이지 + `src/lib/fetcher.ts` |
-| ⬜ | 업로드 드롭존 (413/415/429 노출) | frontend-dev | 컴포넌트 |
-| ⬜ | 검증 | frontend-validator / backend-validator / qa-integration | `docs/valid/*-stage-1-*.md` |
+| ✅ | 경로 안전 유틸 + traversal 유닛 테스트 | security-auth | `src/lib/path-safety.ts` |
+| ✅ | 세션 미들웨어 (전 페이지·API 보호) | security-auth | `src/middleware.ts` |
+| ✅ | Rate limiter (upload / share) | security-auth | `src/lib/rate-limit.ts` |
+| ✅ | `POST /api/auth/login` (timing-safe) / `logout` | backend-dev | 라우트 핸들러 |
+| ✅ | `POST /api/upload` — 검증 + atomic write | backend-dev | 라우트 핸들러 |
+| ✅ | `/login` 페이지 + 전역 fetch 래퍼(401/429) | frontend-dev | 페이지 + `src/lib/fetcher.ts` |
+| ✅ | 업로드 드롭존 (413/415/429 노출) | frontend-dev | 컴포넌트 |
+| ✅ | 검증 | frontend-validator / backend-validator / qa-integration | `docs/valid/*-stage-1-*.md` |
 
-## Stage 2 — GridView + 뷰어 + Monaco 편집 + 썸네일
+## Stage 2 — GridView + 뷰어 + Monaco 편집 + 썸네일 ✅ **완료 2026-07-24**
 | 상태 | 작업 | 담당 | 산출물 |
 |------|------|------|--------|
-| ⬜ | `GET /api/files?path=&sort=&tag=` (gray-matter) | backend-dev | 라우트 핸들러 |
-| ⬜ | `GET /api/file-content` / `PUT`(baseMtime 409) | backend-dev | 라우트 핸들러 |
-| ⬜ | `GET /api/thumbnail` (sharp + 디스크 캐시) | backend-dev | 라우트 핸들러 |
-| ⬜ | 폴더/이미지/md GridView + Breadcrumb | frontend-dev | 컴포넌트 |
-| ⬜ | Monaco 분할 뷰 + Cmd+S + 409 충돌 UX | frontend-dev | 컴포넌트 |
-| ⬜ | 검증 | 검증 3종 | `docs/valid/*-stage-2-*.md` |
+| ✅ | `GET /api/files?path=&sort=&tag=` (gray-matter) | backend-dev | 라우트 핸들러 |
+| ✅ | `GET /api/file-content` / `PUT`(baseMtime 409) | backend-dev | 라우트 핸들러 |
+| ✅ | `GET /api/thumbnail` (sharp + 디스크 캐시) | backend-dev | 라우트 핸들러 |
+| ✅ | 폴더/이미지/md GridView + Breadcrumb | frontend-dev | 컴포넌트 |
+| ✅ | Monaco 분할 뷰 + Cmd+S + 409 충돌 UX | frontend-dev | 컴포넌트 |
+| ✅ | 검증 | 검증 3종 | `docs/valid/*-stage-2-*.md` |
 
-## Stage 3 — 검색 · 정렬 · 태그 (FTS5)
+## Stage 3 — 검색 · 정렬 · 태그 (FTS5) ✅ **완료 2026-07-25**
 | 상태 | 작업 | 담당 | 산출물 |
 |------|------|------|--------|
-| ⬜ | FTS5 스키마(`tokenize='trigram'`) + 초기 색인 | backend-dev | `src/lib/search-index.ts` |
-| ⬜ | 업로드/저장 시 증분 색인 갱신 훅 | backend-dev | 색인 연동 |
-| ⬜ | `GET /api/search` (snippet + BM25) | backend-dev | 라우트 핸들러 |
-| ⬜ | `GET /api/tags` (태그 + 개수) | backend-dev | 라우트 핸들러 |
-| ⬜ | 검색 입력(디바운스) + 정렬 드롭다운 + 태그 칩 | frontend-dev | 컴포넌트 |
-| ⬜ | 한글 부분일치 검증 | qa-integration | `docs/valid/qa-stage-3-validation.md` |
+| ✅ | FTS5 스키마(`tokenize='trigram'`) + 초기 색인 | backend-dev | `src/lib/search-index.ts` |
+| ✅ | 업로드/저장 시 증분 색인 갱신 훅 | backend-dev | 색인 연동 |
+| ✅ | `GET /api/search` (snippet + BM25) | backend-dev | 라우트 핸들러 |
+| ✅ | `GET /api/tags` (태그 + 개수) | backend-dev | 라우트 핸들러 |
+| ✅ | 검색 입력(디바운스) + 정렬 드롭다운 + 태그 칩 | frontend-dev | 컴포넌트 |
+| ✅ | 한글 부분일치 검증 | qa-integration | `docs/valid/qa-stage-3-validation.md` |
 
-## Stage 4 — 소셜 공유 (Discord / Slack)
+## Stage 4 — 소셜 공유 (Discord / Slack) ✅ **완료 2026-07-25**
 | 상태 | 작업 | 담당 | 산출물 |
 |------|------|------|--------|
-| ⬜ | `POST /api/share/notify` (Embed / Block Kit, 502) | backend-dev | 라우트 핸들러 |
-| ⬜ | 공유 모달 + Copy Link(인증 URL 명시) | frontend-dev | 컴포넌트 |
-| ⬜ | 검증 (Webhook URL 미노출 확인) | 검증 3종 | `docs/valid/*-stage-4-*.md` |
+| ✅ | `POST /api/share/notify` (Embed / Block Kit, 502) | backend-dev | 라우트 핸들러 |
+| ✅ | 공유 모달 + Copy Link(인증 URL 명시) | frontend-dev | 컴포넌트 |
+| ✅ | 검증 (Webhook URL 미노출 확인) | 검증 3종 | `docs/valid/*-stage-4-*.md` |
 
-## Stage 5 — 업로드 완료 알림
+## Stage 5 — 업로드 완료 알림 ✅ **완료 2026-07-25**
 | 상태 | 작업 | 담당 | 산출물 |
 |------|------|------|--------|
-| ⬜ | 업로드 성공 훅 → 동일 Webhook 계층 재사용 | backend-dev | 알림 연동 |
-| ⬜ | E2E 해피패스 최종 검증 | qa-integration | `docs/valid/qa-stage-5-validation.md` |
-| ⬜ | 전체 최적화·에러 스윕 | optimizer | `docs/valid/optimize-stage-5-report.md` |
+| ✅ | 업로드 성공 훅 → 동일 Webhook 계층 재사용 | backend-dev | 알림 연동 |
+| ✅ | E2E 해피패스 최종 검증 | qa-integration | `docs/valid/qa-stage-5-validation.md` |
+| ✅ | 전체 최적화·에러 스윕 | optimizer | `docs/valid/optimize-stage-5-report.md` |
 
 ---
 
@@ -80,13 +80,13 @@
 | ✅ | 폴백 원인 4종 수정 (타임아웃 · stdin · `--allowed-tools=` · `is_error`) | backend-dev | `ba6052a` |
 | ✅ | 검증 리포트 2종 | frontend-validator / backend-validator | [frontend](../valid/frontend-ai-panel-validation.md) / [backend](../valid/backend-ai-panel-validation.md) |
 | ✅ | 검증 FAIL 1건(raw fetch → `apiFetch`) + WARN 4건 수정 | frontend-dev / backend-dev | `96f1a56` |
-| 🔵 | **실행 게이트** (typecheck / lint / test / build) | 사용자(맥미니) | [stage-6-macmini-gate.md §1](stage-6-macmini-gate.md) · backlog P0 |
+| 🔵 | **실행 게이트** (typecheck / lint / test / build) — 2026-10-04 Linux에서 통과, 맥미니 재확인 대기 | 사용자(맥미니) | [stage-6-macmini-gate.md §1](stage-6-macmini-gate.md) · backlog P0 |
 | 🔵 | **경로 봉쇄 실측** (CLI가 `MARKDOWN_ROOT` 밖을 읽는지) | 사용자(맥미니) | [stage-6-macmini-gate.md §2](stage-6-macmini-gate.md) · backlog P0 |
 | ✅ | CLI 하드닝(`--restricted`) + `AI_PANEL_ENABLED` 플래그 | backend-dev | `89ea325` |
 | ⬜ | `/api/ai/chat` rate limit | backend-dev | backlog P1-28 |
 | ⬜ | 완료 기록 | tech-lead | `docs/complete-work/stage-6-ai-panel-complete.md` |
 
-**머지 차단 중.** 맥미니에서 실행할 항목은 **[stage-6-macmini-gate.md](stage-6-macmini-gate.md)** 에 명령까지 정리돼 있다.
+**⚠️ 게이트 통과 전에 main에 병합됐다** (`8408ac5`, 2026-09-11). 코드는 `AI_PANEL_ENABLED` 기본 off라 꺼진 상태로 배포된다 — **§2 경로 봉쇄(S-1·S-2) 통과 전에는 운영에서 켜지 않는다.** 실행 게이트 G-1~G-5는 2026-10-04 Linux(Node 22.22.0)에서 1회 통과했으나 맥미니 재확인은 남아 있다. 맥미니에서 실행할 항목은 **[stage-6-macmini-gate.md](stage-6-macmini-gate.md)** 에 명령까지 정리돼 있다.
 판정 근거와 배경은 [tech-lead-stage-6-ai-panel-induction.md](../agent-work/tech-lead-stage-6-ai-panel-induction.md) 참조.
 
 ---

@@ -16,6 +16,7 @@
 | Stage 3 검색 · 정렬 · 태그 | ✅ 완료 | 2026-07-25 | [qa-stage-3-validation.md](../valid/qa-stage-3-validation.md) |
 | Stage 4 소셜 공유 | ✅ 완료 | 2026-07-25 | [qa-stage-4-validation.md](../valid/qa-stage-4-validation.md) |
 | Stage 5 업로드 알림 | ✅ 완료 | 2026-07-25 | [qa-stage-5-validation.md](../valid/qa-stage-5-validation.md) |
+| Stage 6 AI 파일 탐색 패널 (부가) | 🔵 검증중 — **main 병합됨, 맥미니 게이트 미통과** | — | [frontend](../valid/frontend-ai-panel-validation.md) / [backend](../valid/backend-ai-panel-validation.md) (정적 검토), [게이트 목록](stage-6-macmini-gate.md) |
 
 ---
 
@@ -239,3 +240,25 @@
     (`env.ts`가 MARKDOWN_ROOT에 POSIX 절대경로를 요구 + symlink EPERM).
     **이번 변경과 무관하며** clean checkout에서 동일하게 실패함을 확인했다. 맥미니에서 재확인 필요.
 - 미확인: `.env.local`이 맥미니에만 있어 이 작업 환경에서 앱을 띄운 실클릭 검증은 하지 못했다.
+
+### 2026-09-11 — Stage 6 AI 패널 main 병합 (⚠️ 게이트 미통과 상태)
+- `8408ac5`에서 `fix/ai-panel-claude-cli-fallback`이 main에 병합됐다.
+  [stage-6-macmini-gate.md](stage-6-macmini-gate.md)는 "머지 차단"을 명시했으나 G/S/F 항목이 전부 미체크인 채 병합됐다.
+- 완화: `AI_PANEL_ENABLED` 기본 off라 CLI 경로는 꺼진 채 배포된다. **S-1·S-2(경로 봉쇄) 실측 전에는 운영에서 켜지 않는다.**
+- Stage 6은 이 문서의 "완료"가 아니다 — 완료 기록(D-2)과 게이트 통과 후 이동한다. 잔여는 [backlog.md](backlog.md) P0·P1-28 참조.
+
+### 2026-10-04 — `wip/untracked-helpers` 병합 + 실행 게이트 G-1~G-5 1차 실측
+- 담당: 직접 작업 (서브에이전트 미사용)
+- 병합: `origin/wip/untracked-helpers`(`9e20250` 헬퍼 추출 보존 + `f9eadd7` route-helpers 테스트 수정)
+  - 신규 파일: `src/lib/{atomic-write,format-utils,http-utils,markdown-utils,route-helpers}.ts` (+ 테스트 4종),
+    `src/app/workspace/use-workspace-data.ts`, `src/components/workspace/DeleteConfirmModal.tsx`
+  - **아직 어디서도 import되지 않는다** — 기존 라우트·페이지의 중복 코드를 이 헬퍼로 교체하는 작업은 [backlog.md](backlog.md) P2-38로 남긴다.
+  - `f9eadd7`: `route-helpers.test.ts`가 존재하지 않는 `resetRootCacheForTest`를 import해 suite 전체가 실패하던 문제 수정(Jenkins 배포 FAILURE 원인). 캐시 도입은 P2-10에서 별도로 다룬다.
+- 실측 (Linux, Node 22.22.0, `npm ci` 후 — 맥미니 아님):
+  - `npm run typecheck` ✅ 오류 0
+  - `npm run lint` ✅ 오류 0 · 경고 0 (P1-30 `set-state-in-effect` 미발생)
+  - `npx vitest run src/lib/claude-cli.test.ts src/lib/format-elapsed.test.ts` ✅ 32 passed
+  - `npm test` ✅ **21 files / 313 passed**, skip 0 (Linux에서는 symlink 테스트까지 전부 실행됨)
+  - `npm run build` ✅ 성공
+- 의미: [stage-6-macmini-gate.md](stage-6-macmini-gate.md) §1 G-1~G-5는 **코드 수준에서 통과**함이 확인됐다.
+  맥미니(Node 22.23.1, 실제 `.env.local`)에서의 재확인과 §2 S·§3 F 항목은 여전히 미수행이다.

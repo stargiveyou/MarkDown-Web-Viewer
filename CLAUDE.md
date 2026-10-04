@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Husky Works MDs & Direct Local Storage Server** — 맥미니 로컬 디스크(`~/MarkdownDocs`)에 저장된 `.md`/미디어를 ngrok으로 인터넷에 공개된 웹에서 **업로드·조회·편집·검색·공유**하는 Next.js(App Router) 앱.
 
-현재 상태: **Stage 3(검색 · 정렬 · 태그 FTS5) 완료 / Stage 4 착수 대기**. 기준 문서는 [docs/setting/](docs/setting/) 3종이며, 그중 [PLAN.md](docs/setting/PLAN.md)가 최상위 SOURCE OF TRUTH다. 진행 상황은 [docs/plan/](docs/plan/)에서 확인한다.
+현재 상태: **필수 로드맵 Stage 1~5 완료(2026-07-25) / 부가 기능 Stage 6(AI 파일 탐색 패널) 맥미니 게이트 대기**. Stage 6 코드는 이미 main에 병합돼 있으나 `AI_PANEL_ENABLED` 기본 off이며, 경로 봉쇄 실측(S-1·S-2) 전에는 켜지 않는다. 기준 문서는 [docs/setting/](docs/setting/) 3종이며, 그중 [PLAN.md](docs/setting/PLAN.md)가 최상위 SOURCE OF TRUTH다. 진행 상황은 [docs/plan/](docs/plan/)에서 확인한다.
 
 ## 기준 문서 (읽기 우선순위)
 
