@@ -14,7 +14,8 @@
 - 사유: `fix/ai-panel-claude-cli-fallback`의 4개 커밋 + 미커밋 워킹트리에 대해 `typecheck`/`lint`/`test`/`build`가 **한 번도 실행되지 않았다**. 두 검증 리포트 모두 "정적 검토 전용"이며 실행 결과를 PASS로 기록하지 않았다. 작업 PC(Windows)에 Node가 없다는 사정은 게이트를 면제하지 않는다
 - 재현: 맥미니에서 `npm run typecheck` → `npm run lint` → `npx vitest run src/lib/claude-cli.test.ts src/lib/format-elapsed.test.ts` → `npm test` → `npm run build`
 - 담당: 사용자(맥미니) → 결과 수신 후 `tech-lead`
-- 상태: 미착수
+- 상태: **부분 진행** — 2026-10-04 Linux(Node 22.22.0)에서 G-1~G-5 전부 통과(313 tests, lint 0/0, build 성공). 결과는 [progress.md](progress.md) 2026-10-04 항목. 맥미니 재확인만 남음
+- ⚠️ 이 P0가 열린 채 `8408ac5`(2026-09-11)에서 **main에 병합됐다.** `AI_PANEL_ENABLED` 기본 off가 유일한 완화책이다
 
 ### [P0] AI 패널 — CLI의 `MARKDOWN_ROOT` 밖 읽기 가능 여부 미실측
 
@@ -101,6 +102,7 @@ Stage 1~5(필수 로드맵) 완료 (2026-07-25). 현재 진행 중인 것은 **�
 | 35 | `/api/ai/chat` query 길이 상한 부재 | `route.ts:40-43` — 하한(2자)만 있고 상한이 없다. 수 MB 입력 시 `spawn` E2BIG → `SPAWN_FAILED` 폴백 + FTS5에 거대 MATCH가 걸린다. 2,000자 상한 → 400 권고. 출처: 같은 리포트 WARN-7 |
 | 36 | AI 패널 테스트 커버리지 보강 | `src/lib/claude-cli.test.ts` — `buildCliArgs`/`childEnv`/`getTimeoutMs`/`extractAnswer`/`describeFailure`는 덮였으나 **프로세스 수명 로직(`:286-392`)이 미검증**이다. `node:child_process`의 `spawn`을 `vi.mock`해 (a) `stdio`가 `['ignore','pipe','pipe']`인지, (b) 가짜 stdout `{"result":"x","is_error":true}`에 `EXIT_ERROR`가 나오는지, (c) `close` 미발생 시 `vi.useFakeTimers`로 `TIMEOUT`이 되는지 검증. 더불어 `getTimeoutMs`의 허용 최솟값 경계 `'5000'` 케이스와 `mkdtempSync` 임시 디렉터리 정리 추가. 출처: 같은 리포트 WARN-8 |
 | 37 | `GET /api/ai/chat` 응답 공유 타입 부재 + env 주석 보강 | `{ cliAvailable, hint }`가 `src/types/api.ts`에 정의돼 있지 않다(CLAUDE.md "공유 타입 모듈 한 곳"). 더불어 `.env.local.example:98-100`의 `AI_CLI_TIMEOUT_MS` 주석에 "클라이언트 상한 150초(`REQUEST_TIMEOUT_MS`)를 넘기면 브라우저가 먼저 끊는다" 안내 추가. 출처: 같은 리포트 WARN-6 / frontend B-18 |
+| 38 | `wip/untracked-helpers` 헬퍼 실사용 연결 | 2026-10-04 병합된 `src/lib/{atomic-write,format-utils,http-utils,markdown-utils,route-helpers}.ts`, `src/app/workspace/use-workspace-data.ts`, `src/components/workspace/DeleteConfirmModal.tsx`가 **어디서도 import되지 않는다**(테스트만 존재). 기존 라우트(upload·file-content의 atomic write, 에러 처리)와 `workspace/page.tsx`의 중복 로직을 교체할지, 아니면 제거할지 판단 필요. atomic write는 보안 불변식 4 경로이므로 교체 시 backend-validator 검증 필수 |
 
 ---
 
