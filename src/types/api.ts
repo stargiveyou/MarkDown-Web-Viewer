@@ -444,3 +444,58 @@ export interface PushNotificationPayload {
   /** 같은 tag의 알림은 새 알림으로 대체된다. */
   tag?: string;
 }
+
+// ---------------------------------------------------------------------------
+// 문서 링크 · 그래프 — GET /api/links, GET /api/graph
+// ---------------------------------------------------------------------------
+
+/** 문서에서 나가는 링크 1건. 뷰어가 `[[…]]`·상대 `.md` 링크를 실제 문서로 연결할 때 쓴다. */
+export interface OutgoingLinkEntry {
+  kind: 'wiki' | 'md';
+  /** 해석 전 대상 키. 위키링크는 `wikiKey()` 형식, md 링크는 원본 기준 해석 경로. */
+  raw: string;
+  /** 실제 문서 subpath. 아직 없는 문서면 `null`. */
+  resolved: string | null;
+  /** `resolved` 문서의 제목 */
+  title?: string;
+}
+
+/** 이 문서를 가리키는 문서 1건. */
+export interface BacklinkEntry {
+  source: string;
+  title: string;
+  /** 링크가 있던 줄 (최대 140자) */
+  context: string;
+}
+
+/** `GET /api/links?path=` */
+export interface LinksResponse {
+  path: string;
+  /** 색인에 있는 문서인지. false면 아직 색인 전이라 링크가 비어 있을 수 있다. */
+  indexed: boolean;
+  outgoing: OutgoingLinkEntry[];
+  backlinks: BacklinkEntry[];
+}
+
+export interface GraphNode {
+  /** 문서면 subpath, 아직 없는 문서면 `ghost:<대상>`, 태그면 `tag:<태그>` */
+  id: string;
+  label: string;
+  type: 'doc' | 'ghost' | 'tag';
+  /** 연결 수 (노드 크기에 쓴다) */
+  degree: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+
+/** `GET /api/graph?path=&depth=&tags=` — `path`가 없으면 전체 그래프 */
+export interface GraphResponse {
+  center?: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  /** 노드 상한을 넘어 연결이 적은 노드를 뺐는지 */
+  truncated?: boolean;
+}

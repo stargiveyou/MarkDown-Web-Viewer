@@ -32,3 +32,13 @@
 > TO: <agent> — <요청 내용>
 ## 미결 항목
 ```
+
+## 관련 문서
+
+문서 흐름(`CLAUDE.md` "문서 흐름"): [진행 목록](../plan/progress.md) · [잔여 목록](../plan/backlog.md)
+→ **이 폴더** → [검증 리포트 규칙](../valid/README.md) → [완료 기록 규칙](../complete-work/README.md)
+
+최근 문서:
+- [Todoist 아침 브리핑 기획서](plan-todoist-daily-briefing.md)
+- [PWA·iPhone 푸시 검토](review-pwa-ios-push.md)
+- [Stage 6 AI 패널 편입](tech-lead-stage-6-ai-panel-induction.md)

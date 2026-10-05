@@ -63,6 +63,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | POST | `/api/share/notify` | `{ target: "discord"\|"slack", filePath }` |
 | GET/POST/DELETE | `/api/push/subscribe` | PWA 푸시 구독 조회·등록·해제. endpoint는 알려진 푸시 서비스 호스트만 허용(SSRF 방지) |
 | POST | `/api/push/test` | `{ endpoint }` — 그 기기에만 테스트 알림 |
+| GET | `/api/links?path=` | 나가는 링크(위키링크·상대 .md 해석 결과) + 백링크. 색인만 읽음 |
+| GET | `/api/graph?path=&depth=&tags=` | 문서 링크 그래프. `path` 없으면 전체, 있으면 로컬(깊이 1~3) |
 
 상태코드: `200` / `400` / `401` / `409` conflict / `413` too large / `415` unsupported type / `429` rate limited / `500` 서버 내부(디스크 쓰기 실패 등) / `502` webhook 실패.
 

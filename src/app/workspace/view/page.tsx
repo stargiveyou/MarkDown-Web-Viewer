@@ -18,6 +18,7 @@ import remarkFrontmatter from 'remark-frontmatter';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import rehypeBeforeAfter from '@/lib/rehype-before-after';
+import remarkWikilinks from '@/lib/remark-wikilinks';
 import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { extractDocTitle } from '@/lib/doc-title';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
@@ -26,7 +27,10 @@ import { MermaidBlock } from '@/components/workspace/MermaidBlock';
 import { ZoomableImage, isSvgSource } from '@/components/workspace/SvgViewer';
 import { ShareModal } from '@/components/workspace/ShareModal';
 import { TocSidebar } from '@/components/workspace/TocSidebar';
-import type { FileContentResponse } from '@/types/api';
+import { DocLink, DocLinkContext } from '@/components/workspace/DocLink';
+import { BacklinksPanel } from '@/components/workspace/BacklinksPanel';
+import { LocalGraphPanel } from '@/components/workspace/LocalGraphPanel';
+import type { FileContentResponse, LinksResponse } from '@/types/api';
 
 import 'highlight.js/styles/github-dark.css';
 
@@ -36,7 +40,7 @@ import 'highlight.js/styles/github-dark.css';
  * 렌더마다 새 배열을 넘기면 리렌더될 때마다 문서 전체를 다시 파싱하고
  * 트리를 갈아끼워 스크롤 위치가 무너진다.
  */
-const REMARK_PLUGINS = [remarkFrontmatter, remarkGfm];
+const REMARK_PLUGINS = [remarkFrontmatter, remarkGfm, remarkWikilinks];
 const REHYPE_PLUGINS = [rehypeSlug, rehypeHighlight, rehypeBeforeAfter];
 
 /** 목차가 제목을 찾아 읽는 본문 컨테이너 id. */
@@ -71,6 +75,15 @@ function ViewerPageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  // 문서 간 링크(나가는 링크 해석 + 백링크). 본문 렌더를 막지 않도록 따로 불러온다.
+  // 어느 문서의 결과인지 함께 보관해, 문서를 옮기면 이전 결과를 쓰지 않는다(effect 안 리셋 불필요).
+  const [linkState, setLinkState] = useState<{
+    path: string;
+    data: LinksResponse | null;
+    failed: boolean;
+  } | null>(null);
+  const links = linkState?.path === path ? linkState.data : null;
+  const linksFailed = linkState?.path === path && linkState.failed;
 
   useEffect(() => {
     if (!path) {
@@ -107,6 +120,27 @@ function ViewerPageInner() {
     return () => { cancelled = true; };
   }, [path, router]);
 
+  useEffect(() => {
+    if (!path) return;
+    let cancelled = false;
+
+    apiFetch<LinksResponse>(`/api/links?path=${encodeURIComponent(path)}`)
+      .then((data) => {
+        if (!cancelled) setLinkState({ path, data, failed: false });
+      })
+      .catch(() => {
+        // 링크 정보는 부가 기능이다 — 실패해도 본문은 그대로 보여 주고 패널만 숨긴다.
+        // (401은 fetcher가 이미 /login으로 보냈다)
+        if (!cancelled) setLinkState({ path, data: null, failed: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  const docLinkContext = useMemo(() => ({ sourcePath: path, links }), [path, links]);
+
   const handleBackToList = useCallback(() => {
     const parentPath = path.substring(0, path.lastIndexOf('/'));
     router.push(`/workspace?path=${encodeURIComponent(parentPath)}`);
@@ -140,6 +174,8 @@ function ViewerPageInner() {
         }
         return <pre>{children}</pre>;
       },
+      // 문서 간 링크는 DocLinkContext로 해석 결과를 받는다 — 렌더러 동일성을 지키기 위해서다.
+      a: DocLink,
       img: ({ src, alt, ...rest }: React.ComponentPropsWithoutRef<'img'>) => {
         if (!src || typeof src !== 'string') return null;
         const resolvedSrc = resolveImageSrc(src, path);
@@ -271,15 +307,20 @@ function ViewerPageInner() {
           <article
             id={ARTICLE_ID}
             className="prose prose-invert prose-lg xl:prose-xl max-w-none prose-img:rounded-lg prose-img:shadow-md prose-headings:scroll-mt-20 prose-pre:text-[0.85em] prose-table:text-[0.9em]">
-            <Markdown
-              remarkPlugins={REMARK_PLUGINS}
-              rehypePlugins={REHYPE_PLUGINS}
-              components={markdownComponents}
-            >
-              {content}
-            </Markdown>
+            <DocLinkContext.Provider value={docLinkContext}>
+              <Markdown
+                remarkPlugins={REMARK_PLUGINS}
+                rehypePlugins={REHYPE_PLUGINS}
+                components={markdownComponents}
+              >
+                {content}
+              </Markdown>
+            </DocLinkContext.Provider>
           </article>
         )}
+
+        {!loading && !error && <BacklinksPanel links={links} failed={linksFailed} />}
+        {!loading && !error && <LocalGraphPanel path={path} />}
         </div>
       </main>
 

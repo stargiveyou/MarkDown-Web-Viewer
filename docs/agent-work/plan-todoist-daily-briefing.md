@@ -201,3 +201,9 @@ MD 뷰어 SQLite(업로드 이력)는 **읽기 전용**으로만 연다.
 - 코드 변경 **없음**. 사용하는 것: 업로드 이력 테이블(읽기 전용), `POST /api/upload`(브리핑 저장), 캘린더·검색 화면.
 - 워커의 브리핑 업로드는 업로드 rate limit(보안 불변식 7)에 1일 1회 1건으로 걸리지 않는다.
 - 워커가 업로드 API를 쓰려면 세션 로그인이 필요하다 → 워커 전용 비밀번호 로그인 흐름 또는 로컬 전용 업로드 경로 중 택1. **착수 시 `security-auth` 검토 항목.**
+
+## 관련 문서
+
+- [PWA·iPhone 푸시 검토](review-pwa-ios-push.md) — 아침 공지를 Discord 대신 MD 뷰어 앱 알림으로 받는 경로
+- [Stage 6 맥미니 게이트](../plan/stage-6-macmini-gate.md) — 선행 조건(CLI 경로 봉쇄 S-1·S-2)
+- [진행 목록](../plan/progress.md) · [잔여 목록](../plan/backlog.md)

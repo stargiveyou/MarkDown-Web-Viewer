@@ -31,3 +31,9 @@ backend-validator  ─┘
 ```
 
 개별 검증에서 이미 FAIL로 잡힌 항목은 후속 에이전트가 중복 보고하지 않는다.
+
+## 관련 문서
+
+- 앞 단계: [에이전트 작업 공유 규칙](../agent-work/README.md)
+- 다음 단계: PASS 항목만 [완료 기록](../complete-work/README.md)으로, FAIL은 [잔여 목록](../plan/backlog.md)으로 되돌린다
+- 단계별 결과 요약: [진행 목록](../plan/progress.md)

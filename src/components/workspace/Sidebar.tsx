@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, ChevronRight, Folder, HardDrive, Home, Server } from 'lucide-react';
+import { CalendarDays, ChevronRight, Folder, HardDrive, Home, Network, Server } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import type { DiskUsageResponse, FilesResponse } from '@/types/api';
 
@@ -24,6 +24,8 @@ export interface SidebarProps {
   onHomeClick: () => void;
   /** 업로드 캘린더 페이지로 이동 */
   onCalendarClick: () => void;
+  /** 문서 그래프(/workspace/graph)로 이동 */
+  onGraphClick: () => void;
   /** 로그아웃 */
   onLogout: () => void;
   loggingOut: boolean;
@@ -158,6 +160,7 @@ export function Sidebar({
   onFolderClick,
   onHomeClick,
   onCalendarClick,
+  onGraphClick,
   onLogout,
   loggingOut,
 }: SidebarProps) {
@@ -207,6 +210,15 @@ export function Sidebar({
           >
             <CalendarDays className="h-4 w-4" />
             <span>업로드 캘린더</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onGraphClick}
+            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+          >
+            <Network className="h-4 w-4" />
+            <span>문서 그래프</span>
           </button>
 
           <div className="mt-3 mb-2 px-3">
