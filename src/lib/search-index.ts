@@ -10,6 +10,7 @@
  *   - `indexFile(sub)`  파일 1건 upsert. upload/file-content PUT 에서 호출.
  *   - `search(q, lim)`  FTS5 MATCH 검색. `SearchResult[]` 반환.
  *   - `getAllTags()`     frontmatter 태그 집계. `TagCount[]` 반환.
+ *   - `getLinkSnapshot()` 문서·링크 전체 스냅숏 (그래프·백링크 계산용, `link-graph.ts`가 쓴다).
  *
  * 보안:
  *   - 모든 경로는 `resolveUnderRoot` + `assertRealPathUnderRoot` 검증(불변식 2).
@@ -28,6 +29,7 @@ import Database from 'better-sqlite3';
 import matter from 'gray-matter';
 
 import { firstHeading } from './doc-title';
+import { extractLinks, type LinkKind } from './wikilinks';
 import { getServerEnv } from './env';
 import {
   assertRealPathUnderRoot,
@@ -49,6 +51,31 @@ let indexingInProgress = false;
 
 /** 증분 빌드 Promise. 동시 호출 방지 + 완료 대기에 사용한다. */
 let buildPromise: Promise<void> | null = null;
+
+/**
+ * 색인 변경 카운터. 문서·링크가 바뀔 때마다 1씩 오른다.
+ * 그래프 계산 결과를 캐시하는 쪽(`link-graph.ts`)이 무효화 판단에 쓴다.
+ */
+let indexVersion = 0;
+
+/**
+ * 링크 테이블 스키마 버전. 올리면 기존 색인을 한 번 전부 다시 읽어 링크를 채운다.
+ * (링크 테이블은 나중에 추가됐다 — mtime이 그대로인 문서는 증분 빌드가 건너뛰므로 강제 재색인이 필요하다.)
+ */
+const LINKS_SCHEMA_VERSION = '1';
+
+/** 이번 기동에서 링크 전체 재색인이 필요한지. 증분 빌드가 끝나면 버전을 기록한다. */
+let linksBackfillPending = false;
+
+/** 문서·링크가 바뀌었음을 알린다. */
+function bumpIndexVersion(): void {
+  indexVersion += 1;
+}
+
+/** 현재 색인 버전. 캐시 키로 쓴다. */
+export function getIndexVersion(): number {
+  return indexVersion;
+}
 
 // ---------------------------------------------------------------------------
 // DB 초기화
@@ -76,6 +103,8 @@ function ensureDb(): Database.Database {
   nodeFs.mkdirSync(dir, { recursive: true });
 
   db = new Database(dbPath());
+  // 새로 연 DB는 이전 캐시와 다른 상태일 수 있다(테스트의 루트 교체, 재기동).
+  bumpIndexVersion();
 
   // WAL 모드 활성화 -- 읽기/쓰기 동시성 향상
   db.pragma('journal_mode = WAL');
@@ -97,6 +126,32 @@ function ensureDb(): Database.Database {
       mtime   INTEGER NOT NULL
     );
   `);
+
+  // 문서 간 링크 (위키링크·상대 .md 링크). 대상은 **해석 전** 값으로 저장한다 —
+  // 대상 문서가 나중에 올라와도 다시 색인하지 않고 조회 시점에 연결되게 하기 위해서다.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS doc_links (
+      source  TEXT NOT NULL,
+      kind    TEXT NOT NULL,
+      target  TEXT NOT NULL,
+      context TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_doc_links_source ON doc_links (source);
+    CREATE TABLE IF NOT EXISTS index_meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+
+  // 링크 테이블 도입 전 색인이면 mtime 기록을 비워 증분 빌드가 전부 다시 읽게 한다.
+  // 버전은 증분 빌드가 **끝난 뒤** 기록한다 — 도중에 죽으면 다음 기동에서 다시 시도한다.
+  const linksVersion = db
+    .prepare("SELECT value FROM index_meta WHERE key = 'links_version'")
+    .get() as { value: string } | undefined;
+  if (linksVersion?.value !== LINKS_SCHEMA_VERSION) {
+    db.prepare('DELETE FROM docs_meta').run();
+    linksBackfillPending = true;
+  }
 
   // 첫 DB 연결 시 증분 빌드를 백그라운드로 시작한다.
   initIndex();
@@ -187,6 +242,9 @@ export async function indexFile(subpath: string): Promise<void> {
   const stat = await fs.stat(absolutePath);
   const mtime = Math.round(stat.mtimeMs);
 
+  // frontmatter를 뺀 본문에서 링크를 뽑는다(frontmatter 안의 `[[…]]`는 링크가 아니다).
+  const links = extractLinks(parsed.content, subpath);
+
   const d = ensureDb();
 
   // 트랜잭션으로 원자성 보장
@@ -199,7 +257,16 @@ export async function indexFile(subpath: string): Promise<void> {
     d.prepare(
       'INSERT OR REPLACE INTO docs_meta (subpath, mtime) VALUES (?, ?)',
     ).run(subpath, mtime);
+
+    d.prepare('DELETE FROM doc_links WHERE source = ?').run(subpath);
+    const insertLink = d.prepare(
+      'INSERT INTO doc_links (source, kind, target, context) VALUES (?, ?, ?, ?)',
+    );
+    for (const link of links) {
+      insertLink.run(subpath, link.kind, link.target, link.context);
+    }
   })();
+  bumpIndexVersion();
 }
 
 // ---------------------------------------------------------------------------
@@ -211,7 +278,9 @@ export function removeFromIndex(subpath: string): void {
   d.transaction(() => {
     d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(subpath);
     d.prepare('DELETE FROM docs_meta WHERE subpath = ?').run(subpath);
+    d.prepare('DELETE FROM doc_links WHERE source = ?').run(subpath);
   })();
+  bumpIndexVersion();
 }
 
 /**
@@ -227,11 +296,13 @@ export function removeDirectoryFromIndex(dirSubpath: string): void {
     for (const row of rows) {
       d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(row.subpath);
       d.prepare('DELETE FROM docs_meta WHERE subpath = ?').run(row.subpath);
+      d.prepare('DELETE FROM doc_links WHERE source = ?').run(row.subpath);
     }
     // 디렉터리 자체도 제거
     d.prepare('DELETE FROM docs_fts WHERE subpath = ?').run(dirSubpath);
     d.prepare('DELETE FROM docs_meta WHERE subpath = ?').run(dirSubpath);
   })();
+  bumpIndexVersion();
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +434,57 @@ export function getTitles(subpaths: string[]): Map<string, string> {
 }
 
 // ---------------------------------------------------------------------------
+// 링크 스냅숏 (그래프·백링크)
+// ---------------------------------------------------------------------------
+
+export interface IndexedDoc {
+  subpath: string;
+  title: string;
+  tags: string[];
+}
+
+export interface IndexedLink {
+  source: string;
+  kind: LinkKind;
+  target: string;
+  context: string;
+}
+
+export interface LinkSnapshot {
+  /** 스냅숏을 뜬 시점의 색인 버전 */
+  version: number;
+  docs: IndexedDoc[];
+  links: IndexedLink[];
+}
+
+/**
+ * 색인된 문서 전체와 링크 전체를 한 번에 읽는다. 해석(어느 문서를 가리키는지)은 하지 않는다.
+ * 파일 시스템을 훑지 않고 색인만 읽는다(ADR-007).
+ */
+export function getLinkSnapshot(): LinkSnapshot {
+  const d = ensureDb();
+  const version = indexVersion;
+
+  const docs = (
+    d.prepare('SELECT subpath, title, tags FROM docs_fts').all() as Array<{
+      subpath: string;
+      title: string;
+      tags: string;
+    }>
+  ).map((row) => ({
+    subpath: row.subpath,
+    title: row.title,
+    tags: row.tags ? row.tags.split(' ').filter(Boolean) : [],
+  }));
+
+  const links = d
+    .prepare('SELECT source, kind, target, context FROM doc_links')
+    .all() as IndexedLink[];
+
+  return { version, docs, links };
+}
+
+// ---------------------------------------------------------------------------
 // 증분 빌드
 // ---------------------------------------------------------------------------
 
@@ -427,6 +549,13 @@ async function incrementalBuild(): Promise<void> {
         console.error(`[search-index] failed to index ${subpath}:`, error);
       }
     }
+  }
+  // 5. 링크 재색인이 필요했던 기동이면 끝났음을 기록한다.
+  if (linksBackfillPending) {
+    d.prepare(
+      "INSERT OR REPLACE INTO index_meta (key, value) VALUES ('links_version', ?)",
+    ).run(LINKS_SCHEMA_VERSION);
+    linksBackfillPending = false;
   }
 }
 
