@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/Toaster";
 import "./globals.css";
@@ -16,6 +16,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Husky Works MDs",
   description: "마크다운·미디어 업로드/조회/편집 워크스페이스",
+  // iOS 홈 화면 앱(PWA). 매니페스트는 src/app/manifest.ts — Next가 <link rel="manifest">를 자동 삽입한다.
+  appleWebApp: {
+    capable: true,
+    title: "Husky MDs",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({

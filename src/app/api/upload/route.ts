@@ -38,6 +38,7 @@ import {
   sanitizeFolderPath,
   toSubpath,
 } from '@/lib/path-safety';
+import { notifyUploadPush } from '@/lib/push';
 import { checkRateLimit, rateLimitKeyFor } from '@/lib/rate-limit';
 import { indexFile } from '@/lib/search-index';
 import { recordUploadHistory } from '@/lib/upload-history';
@@ -276,6 +277,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     recordUploadHistory(saved, Date.now(), source);
   } catch (historyError) {
     console.error('[upload] history write failed:', historyError);
+  }
+
+  // --- 업로드 완료 푸시 (PWA) -- best-effort, 응답을 기다리게 하지 않는다 --------
+  // VAPID 미설정이면 즉시 반환한다. 실패는 서버 로그에만 남는다(불변식 8).
+  try {
+    notifyUploadPush(saved, toSubpath(targetDir));
+  } catch (pushError) {
+    console.error('[upload] push notify failed:', pushError);
   }
 
   // --- 업로드 완료 알림 -- best-effort (D5-1, D5-4) ---------------------------

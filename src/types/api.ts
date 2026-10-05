@@ -394,3 +394,53 @@ export interface AiChatResponse {
   fallbackHint?: string;
 }
 
+
+// ---------------------------------------------------------------------------
+// Web Push (PWA 알림) — /api/push/subscribe, /api/push/test
+// ---------------------------------------------------------------------------
+
+/** `GET /api/push/subscribe` — 푸시 사용 가능 여부와 구독용 공개키. */
+export interface PushConfigResponse {
+  /** 서버에 VAPID 3종이 설정돼 있는지. false면 클라이언트는 알림 버튼을 숨긴다. */
+  enabled: boolean;
+  /** VAPID 공개키(base64url). 공개해도 되는 값이다. 개인키는 어떤 응답에도 없다(불변식 6). */
+  publicKey: string | null;
+}
+
+/** 브라우저 `PushSubscription.toJSON()` 형태. */
+export interface PushSubscriptionJson {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+/** `POST /api/push/subscribe` */
+export interface PushSubscribeRequest {
+  subscription: PushSubscriptionJson;
+}
+
+/** `DELETE /api/push/subscribe` — 이 기기의 구독 해제. */
+export interface PushUnsubscribeRequest {
+  endpoint: string;
+}
+
+/** `POST /api/push/test` — 이 기기에만 테스트 알림을 보낸다. */
+export interface PushTestRequest {
+  endpoint: string;
+}
+
+export interface PushOkResponse {
+  ok: true;
+}
+
+/**
+ * 서비스 워커가 받는 알림 페이로드 (서버 → 푸시 서비스 → `public/sw.js`).
+ * 잠금 화면에 보이므로 파일명 수준까지만 담는다.
+ */
+export interface PushNotificationPayload {
+  title: string;
+  body: string;
+  /** 알림 클릭 시 열 **앱 내부 상대 경로** (`/`로 시작). */
+  url: string;
+  /** 같은 tag의 알림은 새 알림으로 대체된다. */
+  tag?: string;
+}

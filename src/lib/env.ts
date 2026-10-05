@@ -22,6 +22,17 @@ export interface ServerEnv {
   RATE_LIMIT_WINDOW_SEC: number;
   DISCORD_WEBHOOK_URL?: string;
   SLACK_WEBHOOK_URL?: string;
+  /** Web Push(VAPID) 설정. 세 값이 모두 있을 때만 존재한다 — 없으면 푸시 기능 비활성. */
+  VAPID?: VapidConfig;
+}
+
+export interface VapidConfig {
+  /** 공개키 (base64url, 65바이트 비압축 P-256). 클라이언트에 내려줘도 되는 유일한 값. */
+  publicKey: string;
+  /** 개인키 (base64url, 32바이트). **서버 전용** — 응답·로그에 절대 싣지 않는다(불변식 6). */
+  privateKey: string;
+  /** 발신자 연락처. `mailto:` 또는 `https:` URL. 푸시 서비스가 남용 시 연락하는 용도. */
+  subject: string;
 }
 
 /**
@@ -87,6 +98,46 @@ function readOptionalWebhook(name: string, problems: string[]): string | undefin
   return value;
 }
 
+/** base64url 문자열을 디코드한 바이트 길이. 형식이 틀리면 -1. */
+function base64UrlByteLength(value: string): number {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) return -1;
+  return Buffer.from(value, 'base64url').length;
+}
+
+/**
+ * Web Push VAPID 설정. **셋 다 비었으면 비활성**, 일부만 있으면 설정 오류다
+ * (켜려다 빠뜨린 것을 조용히 무시하면 "알림이 안 온다"를 원인 없이 겪게 된다).
+ *
+ * 키 생성: `npm run generate-vapid-keys`
+ */
+function readOptionalVapid(problems: string[]): VapidConfig | undefined {
+  const publicKey = (process.env.VAPID_PUBLIC_KEY ?? '').trim();
+  const privateKey = (process.env.VAPID_PRIVATE_KEY ?? '').trim();
+  const subject = (process.env.VAPID_SUBJECT ?? '').trim();
+
+  const present = [publicKey, privateKey, subject].filter((v) => v !== '').length;
+  if (present === 0) return undefined;
+  if (present !== 3) {
+    problems.push('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT: 셋 다 설정하거나 셋 다 비워야 합니다');
+    return undefined;
+  }
+
+  let ok = true;
+  if (base64UrlByteLength(publicKey) !== 65) {
+    problems.push('VAPID_PUBLIC_KEY: base64url 65바이트 공개키가 아닙니다');
+    ok = false;
+  }
+  if (base64UrlByteLength(privateKey) !== 32) {
+    problems.push('VAPID_PRIVATE_KEY: base64url 32바이트 개인키가 아닙니다');
+    ok = false;
+  }
+  if (!/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(subject)) {
+    problems.push('VAPID_SUBJECT: mailto: 또는 https: URL이어야 합니다');
+    ok = false;
+  }
+  return ok ? { publicKey, privateKey, subject } : undefined;
+}
+
 /**
  * 필수 env를 검증해 반환한다. 하나라도 없으면 부팅 시점에 throw한다.
  * (런타임 중간에 조용히 undefined로 흐르는 것보다 기동 실패가 안전하다.)
@@ -150,6 +201,7 @@ export function getServerEnv(): ServerEnv {
   // --- 선택 항목 -------------------------------------------------------------
   const discordWebhookUrl = readOptionalWebhook('DISCORD_WEBHOOK_URL', problems);
   const slackWebhookUrl = readOptionalWebhook('SLACK_WEBHOOK_URL', problems);
+  const vapid = readOptionalVapid(problems);
 
   if (problems.length > 0) {
     throw new EnvConfigError(problems);
@@ -165,6 +217,7 @@ export function getServerEnv(): ServerEnv {
     RATE_LIMIT_WINDOW_SEC: rateLimitWindowSec,
     ...(discordWebhookUrl ? { DISCORD_WEBHOOK_URL: discordWebhookUrl } : {}),
     ...(slackWebhookUrl ? { SLACK_WEBHOOK_URL: slackWebhookUrl } : {}),
+    ...(vapid ? { VAPID: Object.freeze(vapid) } : {}),
   });
 
   return cached;

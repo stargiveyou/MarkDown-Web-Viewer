@@ -262,3 +262,31 @@
   - `npm run build` ✅ 성공
 - 의미: [stage-6-macmini-gate.md](stage-6-macmini-gate.md) §1 G-1~G-5는 **코드 수준에서 통과**함이 확인됐다.
   맥미니(Node 22.23.1, 실제 `.env.local`)에서의 재확인과 §2 S·§3 F 항목은 여전히 미수행이다.
+
+### 2026-10-05 — PWA(홈 화면 앱) + 업로드 완료 푸시 알림
+- 담당: 직접 작업 (서브에이전트 미사용) · 근거: [review-pwa-ios-push.md](../agent-work/review-pwa-ios-push.md)
+- 산출물:
+  - PWA: [src/app/manifest.ts](../../src/app/manifest.ts)(`/manifest.webmanifest`, standalone), `public/icons/*`(192/512/maskable/apple-touch),
+    [src/app/layout.tsx](../../src/app/layout.tsx)(`appleWebApp`, theme-color)
+  - 서비스 워커: [public/sw.js](../../public/sw.js) — **push 수신·클릭 처리만**, fetch 가로채기·캐시 없음. 클릭 URL은 같은 origin 내부 경로만 허용
+  - 서버: [src/lib/push.ts](../../src/lib/push.ts)(구독 저장 `.mdws/push.db`, `web-push` 발송, 404/410 구독 자동 삭제),
+    [`/api/push/subscribe`](../../src/app/api/push/subscribe/route.ts)(GET/POST/DELETE), [`/api/push/test`](../../src/app/api/push/test/route.ts)
+  - 업로드 연동: [src/app/api/upload/route.ts](../../src/app/api/upload/route.ts) — webhook 알림과 별도로 `notifyUploadPush()`를 띄우고 **응답을 기다리게 하지 않는다**
+  - UI: [src/components/workspace/PushToggle.tsx](../../src/components/workspace/PushToggle.tsx) — 헤더 종 버튼. 서버 미설정·미지원 브라우저면 숨김, iOS Safari 탭이면 "홈 화면에 추가" 안내
+  - env: `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (셋 다 있거나 셋 다 없어야 함, 키 길이 검증) · `npm run generate-vapid-keys`
+  - 의존성: `web-push` 3.6.7 (+ `@types/web-push`) — `npm audit` 신규 취약점 0건
+- 보안 판단:
+  - 미들웨어 매처에서 `/manifest.webmanifest`, `/sw.js`를 **정확한 경로로만** 제외 (불변식 1 예외 — 정적·시크릿 없음). `/sw.jsx`, `/manifest.json` 등은 계속 리다이렉트
+  - endpoint는 서버가 POST하는 URL이므로 **알려진 푸시 서비스 호스트 허용 목록**으로 SSRF 차단 (apple / fcm / mozilla / windows)
+  - p256dh는 길이뿐 아니라 **P-256 곡선 위의 점인지** 검증
+  - 로그에는 endpoint 전체가 아니라 호스트만 남긴다 (endpoint = 그 기기로 보낼 권한)
+  - rate limit: 구독 20회/분, 테스트 알림 3회/분 · VAPID 개인키는 응답에 없음(테스트로 확인)
+- 검증 (Linux, Node 22.22.0):
+  - typecheck 0 · lint 0/0 · `npm test` 전체 통과 (신규: `push.test.ts`, `push-client.test.ts`, `env-vapid.test.ts`, `push-routes.test.ts`) · build 성공
+  - 실서버 curl: 비로그인 `/manifest.webmanifest`·`/sw.js`·아이콘 200, `/api/push/*` 401, `/workspace`·`/sw.jsx`·`/manifest.json` 307
+  - 로그인 후: 공개키 조회, 허용 밖 endpoint 400, 정상 구독 200, 업로드 응답 0.05초(푸시는 비동기로 발송·실패 로그에 호스트만)
+  - Chromium(Playwright): 서비스 워커 등록·활성, CDP로 push 주입 → 알림 표시(제목·본문·tag·URL 일치), 외부 URL 페이로드는 `/workspace`로 치환
+  - 모바일 390px 헤더 가로 넘침 0 (버튼 추가로 생긴 14px 넘침을 여백 조정으로 해소)
+- 미확인 (실기기 필요): iPhone 홈 화면 설치 → 권한 허용 → 실제 Apple 푸시 수신 → 알림 탭 이동, ngrok Basic Auth 하에서의 동작.
+  Chromium 테스트 환경은 Push 구독 자체를 지원하지 않아(시크릿 모드 제한) 실제 구독 왕복은 검증하지 못했다.
+
