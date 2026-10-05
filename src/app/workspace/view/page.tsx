@@ -29,6 +29,7 @@ import { ShareModal } from '@/components/workspace/ShareModal';
 import { TocSidebar } from '@/components/workspace/TocSidebar';
 import { DocLink, DocLinkContext } from '@/components/workspace/DocLink';
 import { BacklinksPanel } from '@/components/workspace/BacklinksPanel';
+import { LocalGraphPanel } from '@/components/workspace/LocalGraphPanel';
 import type { FileContentResponse, LinksResponse } from '@/types/api';
 
 import 'highlight.js/styles/github-dark.css';
@@ -319,6 +320,7 @@ function ViewerPageInner() {
         )}
 
         {!loading && !error && <BacklinksPanel links={links} failed={linksFailed} />}
+        {!loading && !error && <LocalGraphPanel path={path} />}
         </div>
       </main>
 

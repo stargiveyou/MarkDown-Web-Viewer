@@ -310,6 +310,7 @@ function WorkspacePageInner() {
         onFolderClick={handleFolderClick}
         onHomeClick={() => { router.push('/workspace'); setMobileMenuOpen(false); }}
         onCalendarClick={() => router.push('/workspace/calendar')}
+        onGraphClick={() => router.push('/workspace/graph')}
         onLogout={handleLogout}
         loggingOut={loggingOut}
       />
@@ -328,6 +329,7 @@ function WorkspacePageInner() {
               onFolderClick={handleFolderClick}
               onHomeClick={() => { router.push('/workspace'); setMobileMenuOpen(false); }}
         onCalendarClick={() => router.push('/workspace/calendar')}
+        onGraphClick={() => router.push('/workspace/graph')}
               onLogout={handleLogout}
               loggingOut={loggingOut}
             />

@@ -290,3 +290,20 @@
 - 미확인 (실기기 필요): iPhone 홈 화면 설치 → 권한 허용 → 실제 Apple 푸시 수신 → 알림 탭 이동, ngrok Basic Auth 하에서의 동작.
   Chromium 테스트 환경은 Push 구독 자체를 지원하지 않아(시크릿 모드 제한) 실제 구독 왕복은 검증하지 못했다.
 
+### 2026-10-05 — 문서 링크 그래프 (Obsidian 그래프 개념) — 브랜치 `feat/obsidian-graph`
+- 담당: 직접 작업 (서브에이전트 미사용) · 필수 로드맵 밖 부가 기능
+- **1단계 — 위키링크·백링크** (`16c9d1e`)
+  - 색인 시 `[[문서명]]`·상대 `.md` 링크를 `doc_links`에 **해석 전** 값으로 저장 → 대상 문서가 나중에 올라와도 원본 재색인 없이 연결
+  - 해석: [src/lib/wikilinks.ts](../../src/lib/wikilinks.ts) (서버·클라이언트 공용 순수 모듈). 파일명 기준·대소문자 무시·NFC,
+    동명이면 원본과 공유하는 상위 폴더가 깊은 것 → 짧은 경로 → 사전순
+  - 링크 테이블 도입 전 색인은 기동 시 1회 전부 재색인(`index_meta.links_version`)
+  - API: `GET /api/links`, `GET /api/graph` — 색인만 읽음(ADR-007), `path`는 경로 안전 유틸 경유(불변식 2)
+  - 뷰어: `[[…]]` 클릭 이동, 없는 문서는 점선 표시, 본문 아래 백링크 패널(문맥 줄 포함)
+- **2단계 — 그래프 화면**
+  - [GraphCanvas](../../src/components/workspace/GraphCanvas.tsx) (`react-force-graph-2d`, canvas, `ssr:false`) — 호버 시 이웃 강조, 유령·태그 노드 구분, 소규모 그래프 과확대 방지
+  - 뷰어 하단 **로컬 그래프**(깊이 1~3, 태그 토글, 접기), 전체 그래프 페이지 `/workspace/graph`(고립 문서 포함, 노드 상한 1500), 사이드바 진입
+  - 의존성: `react-force-graph-2d` 1.29 — `npm audit` 신규 취약점 0건
+- 검증 (Linux, Node 22.22.0): lint 0 · typecheck 0 · test **30 files / 411 passed** (신규 6파일) · build 성공
+  - 실서버: 비로그인 `/api/links` 401, 백링크·ghost·코드 블록 제외·위키링크 클릭 이동, 전체/로컬/태그 그래프, 사이드바 진입, 모바일 390px 넘침 0 (Chromium)
+- 남은 것: [backlog.md](backlog.md) P2-41~43
+

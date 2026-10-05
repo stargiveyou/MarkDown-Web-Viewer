@@ -105,6 +105,9 @@ Stage 1~5(필수 로드맵) 완료 (2026-07-25). 현재 진행 중인 것은 **�
 | 38 | `wip/untracked-helpers` 헬퍼 실사용 연결 | 2026-10-04 병합된 `src/lib/{atomic-write,format-utils,http-utils,markdown-utils,route-helpers}.ts`, `src/app/workspace/use-workspace-data.ts`, `src/components/workspace/DeleteConfirmModal.tsx`가 **어디서도 import되지 않는다**(테스트만 존재). 기존 라우트(upload·file-content의 atomic write, 에러 처리)와 `workspace/page.tsx`의 중복 로직을 교체할지, 아니면 제거할지 판단 필요. atomic write는 보안 불변식 4 경로이므로 교체 시 backend-validator 검증 필수 |
 | 39 | PWA 푸시 실기기 검증 | [review-pwa-ios-push.md](../agent-work/review-pwa-ios-push.md) §6 P-1·P-4·P-5·P-6. 맥미니 `.env.local`에 VAPID 3종 설정(`npm run generate-vapid-keys`) → ngrok **고정 도메인**으로 iPhone Safari 접속 → 공유 → 홈 화면에 추가 → 앱에서 종 버튼 → 테스트 알림 수신 → 업로드 후 알림 탭 시 문서 열림 확인. ngrok Basic Auth를 켠 상태에서도 반복 |
 | 40 | 미들웨어 PWA 예외 `security-auth` 사후 검토 | `/manifest.webmanifest`·`/sw.js` 인증 예외(불변식 1 범위 해석)와 push endpoint 허용 목록을 사용자 요청으로 직접 작업에서 적용했다. 팀 규칙상 `security-auth` 검토를 사후로 받는다 |
+| 41 | 이름 변경 시 링크 자동 갱신 | Obsidian은 문서 이름을 바꾸면 그 문서를 가리키는 `[[…]]`를 고쳐 준다. 지금은 `/api/move` 후 들어오던 링크가 "아직 없는 문서"가 된다. 원본 파일을 서버가 다시 쓰는 일이라 atomic write·mtime 409와 충돌하지 않게 설계해야 한다 |
+| 42 | `![[문서]]` 임베드 본문 삽입 | 지금은 문서 임베드를 일반 링크로만 렌더한다(그래프에는 연결로 반영됨). 본문을 펼쳐 넣으려면 재귀·순환 방지와 권한 경계(같은 루트) 확인 필요 |
+| 43 | 그래프 실기기·대규모 확인 | 아이폰 PWA에서 로컬 그래프 터치 조작(핀치 줌·드래그)과, 문서 수백~천 개 운영 데이터에서 전체 그래프 성능·`truncated` 동작을 맥미니에서 확인 |
 
 ---
 
