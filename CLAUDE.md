@@ -61,6 +61,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | POST | `/api/upload` | multipart → `MARKDOWN_ROOT` 하위 저장 |
 | GET | `/api/thumbnail?path=&w=` | sharp 리사이즈 + 디스크 캐시 |
 | POST | `/api/share/notify` | `{ target: "discord"\|"slack", filePath }` |
+| GET/POST/DELETE | `/api/push/subscribe` | PWA 푸시 구독 조회·등록·해제. endpoint는 알려진 푸시 서비스 호스트만 허용(SSRF 방지) |
+| POST | `/api/push/test` | `{ endpoint }` — 그 기기에만 테스트 알림 |
 
 상태코드: `200` / `400` / `401` / `409` conflict / `413` too large / `415` unsupported type / `429` rate limited / `500` 서버 내부(디스크 쓰기 실패 등) / `502` webhook 실패.
 
@@ -73,17 +75,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 모든 코드에 무조건 적용된다. 하나라도 미충족이면 해당 단계는 완료가 아니다.
 
 1. `/api/auth/login`을 제외한 **모든 페이지·API가 세션 보호**. 401 → `/login` 리다이렉트
+   (예외는 미들웨어 매처의 정적 자산뿐 — 빌드 산출물, Monaco, 이미지 확장자, PWA용 `/manifest.webmanifest`·`/sw.js`. 사용자 데이터는 절대 `public/`에 두지 않는다)
 2. 모든 `path` 파라미터는 `path.resolve()` 후 `MARKDOWN_ROOT` 하위임을 검증하는 **단일 유틸**을 경유 (files/upload/file-content/thumbnail 전부). `../`, 절대경로, 심볼릭 링크 탈출, 인코딩 우회를 유닛 테스트로 검증
 3. 업로드 검증: 크기 상한(413), 확장자 화이트리스트(415), 파일명 새니타이즈
 4. **Atomic write**: 업로드·에디터 저장 모두 임시 파일 → `rename`
 5. 편집 충돌: `baseMtime` 비교 → 409, UI는 비파괴적 경고(무단 덮어쓰기 금지)
-6. `SESSION_SECRET`·Webhook URL은 `.env.local` 전용. 클라이언트 번들에 절대 포함 금지
+6. `SESSION_SECRET`·Webhook URL·`VAPID_PRIVATE_KEY`는 `.env.local` 전용. 클라이언트 번들에 절대 포함 금지
 7. `/api/upload`, `/api/share/notify`에 rate limit
 8. 서버 내부 오류·스택트레이스를 클라이언트에 노출 금지 (서버 로깅만)
 
 ## 환경변수
 
-`MARKDOWN_ROOT`, `SESSION_PASSWORD`(해시), `SESSION_SECRET`, `UPLOAD_MAX_BYTES`, `ALLOWED_EXTENSIONS`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_SEC`, `DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`
+`MARKDOWN_ROOT`, `SESSION_PASSWORD`(해시), `SESSION_SECRET`, `UPLOAD_MAX_BYTES`, `ALLOWED_EXTENSIONS`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_SEC`, `DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(PWA 푸시, 셋 다 있거나 셋 다 없어야 함)
 
 저장소 루트는 `MARKDOWN_ROOT`에서만 해석한다 — `path.join(os.homedir(), ...)` 같은 하드코딩 폴백을 두지 않는다.
 

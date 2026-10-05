@@ -14,6 +14,7 @@ import { Sidebar } from '@/components/workspace/Sidebar';
 import { Breadcrumb } from '@/components/workspace/Breadcrumb';
 import { BentoGrid } from '@/components/workspace/BentoGrid';
 import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
+import { PushToggle } from '@/components/workspace/PushToggle';
 import { CreateFolderModal } from '@/components/workspace/CreateFolderModal';
 import { MoveModal } from '@/components/workspace/MoveModal';
 import { SearchBar } from '@/components/workspace/SearchBar';
@@ -338,7 +339,7 @@ function WorkspacePageInner() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Sticky Header */}
         <header className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
-          <div className="flex items-center justify-between gap-4 px-6 py-4">
+          <div className="flex items-center justify-between gap-2 px-4 py-4 sm:gap-4 sm:px-6">
             <div className="flex items-center gap-3">
               {/* 모바일 햄버거 */}
               <button
@@ -357,7 +358,7 @@ function WorkspacePageInner() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* 정렬 드롭다운 */}
               <select
                 value={sort}
@@ -382,11 +383,14 @@ function WorkspacePageInner() {
                 />
               )}
 
+              {/* 이 기기의 업로드 알림 (PWA Web Push) — 서버 미설정·미지원 브라우저에서는 숨는다 */}
+              <PushToggle />
+
               {/* 새 폴더 버튼 */}
               <button
                 type="button"
                 onClick={() => setCreateFolderOpen(true)}
-                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:px-4"
               >
                 <FolderPlus className="h-4 w-4" />
                 <span className="hidden sm:inline">새 폴더</span>
@@ -396,7 +400,7 @@ function WorkspacePageInner() {
               <button
                 type="button"
                 onClick={() => setUploadOpen(true)}
-                className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                className="flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:px-4"
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">새 문서 업로드</span>

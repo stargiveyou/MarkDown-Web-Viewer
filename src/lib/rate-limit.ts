@@ -57,6 +57,10 @@ export const RATE_LIMIT_POLICY = {
   shareNotify: { max: 10, windowSec: 60 },
   /** 로그인: 무차별 대입 방지. 5분에 10회. */
   login: { max: 10, windowSec: 300 },
+  /** 푸시 구독 등록·해제: 서버가 구독 DB에 쓰므로 제한한다. */
+  pushSubscribe: { max: 20, windowSec: 60 },
+  /** 테스트 알림: 외부 푸시 서비스를 때리므로 보수적으로. */
+  pushTest: { max: 3, windowSec: 60 },
 } as const;
 
 export type RateLimitOverride = { max: number; windowSec: number } | null | undefined;

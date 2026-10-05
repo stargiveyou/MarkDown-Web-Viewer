@@ -140,6 +140,11 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  *   - `_next/static`, `_next/image` : 빌드 산출물. 시크릿이 없고 미들웨어를 태우면 느려진다.
  *   - `monaco/` : self-host한 Monaco 에디터 정적 자산(public/monaco/vs). 공개 라이브러리라 시크릿이 없다.
  *   - `favicon.ico` / `*.svg|png|...` : public/ 정적 파일
+ *   - `manifest.webmanifest`, `sw.js` : PWA 매니페스트와 서비스 워커. **정확한 경로만** 제외한다.
+ *     iOS "홈 화면에 추가"와 서비스 워커 등록은 로그인 전에도 이 두 파일을 받아야 하고,
+ *     리다이렉트(307)가 끼면 설치·등록이 실패한다. 둘 다 앱 이름·아이콘·알림 처리 코드뿐이라
+ *     사용자 데이터·시크릿이 없다. 서비스 워커는 fetch를 가로채지 않으므로(캐시 없음)
+ *     이 예외로 다른 경로의 보호가 약해지지 않는다.
  *
  * 주의:
  *   - `/api/thumbnail`은 이미지를 반환하지만 **경로에 확장자가 없으므로** 아래 패턴에 걸리지 않는다.
@@ -148,6 +153,6 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|monaco/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|monaco/|favicon.ico|manifest\\.webmanifest$|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
   ],
 };

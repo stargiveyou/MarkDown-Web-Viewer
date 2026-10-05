@@ -103,6 +103,8 @@ Stage 1~5(필수 로드맵) 완료 (2026-07-25). 현재 진행 중인 것은 **�
 | 36 | AI 패널 테스트 커버리지 보강 | `src/lib/claude-cli.test.ts` — `buildCliArgs`/`childEnv`/`getTimeoutMs`/`extractAnswer`/`describeFailure`는 덮였으나 **프로세스 수명 로직(`:286-392`)이 미검증**이다. `node:child_process`의 `spawn`을 `vi.mock`해 (a) `stdio`가 `['ignore','pipe','pipe']`인지, (b) 가짜 stdout `{"result":"x","is_error":true}`에 `EXIT_ERROR`가 나오는지, (c) `close` 미발생 시 `vi.useFakeTimers`로 `TIMEOUT`이 되는지 검증. 더불어 `getTimeoutMs`의 허용 최솟값 경계 `'5000'` 케이스와 `mkdtempSync` 임시 디렉터리 정리 추가. 출처: 같은 리포트 WARN-8 |
 | 37 | `GET /api/ai/chat` 응답 공유 타입 부재 + env 주석 보강 | `{ cliAvailable, hint }`가 `src/types/api.ts`에 정의돼 있지 않다(CLAUDE.md "공유 타입 모듈 한 곳"). 더불어 `.env.local.example:98-100`의 `AI_CLI_TIMEOUT_MS` 주석에 "클라이언트 상한 150초(`REQUEST_TIMEOUT_MS`)를 넘기면 브라우저가 먼저 끊는다" 안내 추가. 출처: 같은 리포트 WARN-6 / frontend B-18 |
 | 38 | `wip/untracked-helpers` 헬퍼 실사용 연결 | 2026-10-04 병합된 `src/lib/{atomic-write,format-utils,http-utils,markdown-utils,route-helpers}.ts`, `src/app/workspace/use-workspace-data.ts`, `src/components/workspace/DeleteConfirmModal.tsx`가 **어디서도 import되지 않는다**(테스트만 존재). 기존 라우트(upload·file-content의 atomic write, 에러 처리)와 `workspace/page.tsx`의 중복 로직을 교체할지, 아니면 제거할지 판단 필요. atomic write는 보안 불변식 4 경로이므로 교체 시 backend-validator 검증 필수 |
+| 39 | PWA 푸시 실기기 검증 | [review-pwa-ios-push.md](../agent-work/review-pwa-ios-push.md) §6 P-1·P-4·P-5·P-6. 맥미니 `.env.local`에 VAPID 3종 설정(`npm run generate-vapid-keys`) → ngrok **고정 도메인**으로 iPhone Safari 접속 → 공유 → 홈 화면에 추가 → 앱에서 종 버튼 → 테스트 알림 수신 → 업로드 후 알림 탭 시 문서 열림 확인. ngrok Basic Auth를 켠 상태에서도 반복 |
+| 40 | 미들웨어 PWA 예외 `security-auth` 사후 검토 | `/manifest.webmanifest`·`/sw.js` 인증 예외(불변식 1 범위 해석)와 push endpoint 허용 목록을 사용자 요청으로 직접 작업에서 적용했다. 팀 규칙상 `security-auth` 검토를 사후로 받는다 |
 
 ---
 
