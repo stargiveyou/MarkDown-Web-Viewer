@@ -48,3 +48,9 @@
 ## 검증 요청
 > TO: <frontend-validator | backend-validator> — 검증 범위: <파일 범위>
 ```
+
+## 관련 문서
+
+- 앞 단계: [검증 리포트 규칙](../valid/README.md) — FAIL 항목은 여기 기록하지 않는다
+- 다음 단계: [진행 목록](../plan/progress.md) 갱신 · 넘긴 항목은 [잔여 목록](../plan/backlog.md)
+- 작업 공유 규칙: [에이전트 작업 공유](../agent-work/README.md)

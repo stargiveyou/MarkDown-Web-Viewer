@@ -306,4 +306,9 @@
 - 검증 (Linux, Node 22.22.0): lint 0 · typecheck 0 · test **30 files / 411 passed** (신규 6파일) · build 성공
   - 실서버: 비로그인 `/api/links` 401, 백링크·ghost·코드 블록 제외·위키링크 클릭 이동, 전체/로컬/태그 그래프, 사이드바 진입, 모바일 390px 넘침 0 (Chromium)
 - 남은 것: [backlog.md](backlog.md) P2-41~43
+- **업로드 스킬에 링크 규칙 추가** — [Example/SKILL.md](../../Example/SKILL.md) §2-1 · `.claude/commands/upload-md.md`
+  - 업로드 전 스테이징 복사본에 `[[문서명]]`과 `## 관련 문서`를 단다(파일명 정규화 후). 기존 서버 문서는 내려받아 링크만 더해 저장
+  - 보조 명령 [Example/mdws.sh](../../Example/mdws.sh): `search`(붙여 쓸 위키링크 출력, 동명이면 폴더형) · `links` · `get` · `put`(baseMtime → 409면 덮어쓰지 않음)
+  - 세션 쿠키 재사용(`MDWS_COOKIE_JAR`) — 로그인 rate limit(5분 10회) 회피. 로컬 서버에서 12회 연속 호출·409 거부 확인
+  - 저장소 문서 중 들어오는 링크가 없던 4건(`agent-work`·`valid`·`complete-work` README, `Example/SKILL.md`)에 문서 흐름 링크 추가
 
