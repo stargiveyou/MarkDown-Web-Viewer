@@ -119,6 +119,19 @@ describe('백링크와 나가는 링크', () => {
   });
 });
 
+describe('이전 버전 파일', () => {
+  it('저장 시 남는 버전 백업(이름_YYYYMMDD-HHmmss.md)은 노드·백링크에 넣지 않는다', async () => {
+    await buildIndex();
+    await put('b.md', '# B');
+    await put('a.md', '[[b]] 새 버전');
+    // 에디터 저장이 남기는 백업 — 증분 빌드가 디스크에서 찾아 색인한다
+    await put('a_20261005-120000.md', '[[b]] 옛 버전');
+
+    expect(getLinksFor('b.md').backlinks.map((b) => b.source)).toEqual(['a.md']);
+    expect(getGraph().nodes.map((n) => n.id).sort()).toEqual(['a.md', 'b.md']);
+  });
+});
+
 describe('그래프', () => {
   async function chain(): Promise<void> {
     // a → b → c → d,  e는 고립

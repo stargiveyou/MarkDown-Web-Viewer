@@ -4,6 +4,7 @@
 # 사용법 (자격증명은 환경변수로만):
 #   MDWS_URL=... MDWS_PASSWORD=... mdws.sh search "<검색어>"        # 링크할 기존 문서 찾기
 #   MDWS_URL=... MDWS_PASSWORD=... mdws.sh links  "<subpath>"       # 그 문서의 나가는 링크·백링크
+#   MDWS_URL=... MDWS_PASSWORD=... mdws.sh list   [폴더접두사]        # 전체 문서와 연결 수 (적은 순)
 #   MDWS_URL=... MDWS_PASSWORD=... mdws.sh get    "<subpath>" <out.md>   # 서버 문서 내려받기 (+ <out.md>.mtime)
 #   MDWS_URL=... MDWS_PASSWORD=... mdws.sh put    "<subpath>" <in.md>    # 수정본 저장 (<in.md>.mtime 필요)
 #
@@ -97,6 +98,24 @@ case "$CMD" in
       });'
     ;;
 
+  list)
+    # 색인된 전체 문서를 연결 수 오름차순으로 — 링크를 달 대상(고립·저연결)을 고를 때 쓴다.
+    # 출력: 연결수 <TAB> 경로 <TAB> 제목. 마지막 줄에 요약.
+    prefix="${1-}"
+    login
+    api_get "/api/graph" | PREFIX="$prefix" node -e '
+      let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+        const g = JSON.parse(s);
+        const docs = g.nodes
+          .filter(n => n.type === "doc" && n.id.startsWith(process.env.PREFIX || ""))
+          .sort((a, b) => a.degree - b.degree || a.id.localeCompare(b.id));
+        for (const n of docs) console.log(`${n.degree}\t${n.id}\t${n.label}`);
+        const orphans = docs.filter(n => n.degree === 0).length;
+        const ghosts = g.nodes.filter(n => n.type === "ghost").length;
+        console.error(`── 문서 ${docs.length} · 고립 ${orphans} · 아직 없는 문서 ${ghosts}${g.truncated ? " · (상한 초과로 일부만)" : ""}`);
+      });'
+    ;;
+
   get)
     sub="${1:?subpath가 필요합니다}"; out="${2:?저장할 파일 경로가 필요합니다}"
     login
@@ -136,7 +155,7 @@ case "$CMD" in
     ;;
 
   *)
-    echo "사용법: mdws.sh {search <검색어> | links <subpath> | get <subpath> <out.md> | put <subpath> <in.md>}" >&2
+    echo "사용법: mdws.sh {search <검색어> | links <subpath> | list [폴더] | get <subpath> <out.md> | put <subpath> <in.md>}" >&2
     exit 2
     ;;
 esac

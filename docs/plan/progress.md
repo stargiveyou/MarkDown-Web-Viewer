@@ -311,4 +311,7 @@
   - 보조 명령 [Example/mdws.sh](../../Example/mdws.sh): `search`(붙여 쓸 위키링크 출력, 동명이면 폴더형) · `links` · `get` · `put`(baseMtime → 409면 덮어쓰지 않음)
   - 세션 쿠키 재사용(`MDWS_COOKIE_JAR`) — 로그인 rate limit(5분 10회) 회피. 로컬 서버에서 12회 연속 호출·409 거부 확인
   - 저장소 문서 중 들어오는 링크가 없던 4건(`agent-work`·`valid`·`complete-work` README, `Example/SKILL.md`)에 문서 흐름 링크 추가
+- **서버 저장 문서 링크 백필 지시서** — [ops-server-docs-link-backfill.md](../agent-work/ops-server-docs-link-backfill.md) (맥미니 실행 대기)
+  - 함께 고친 것: 저장 시 남는 이전 버전 파일(`이름_YYYYMMDD-HHmmss.md`)을 그래프·백링크에서 제외(회귀 테스트 추가) — 백필로 문서마다 버전이 생겨 복제 노드가 될 뻔했다
+  - `mdws.sh list [폴더]` 추가 — 전체 문서를 연결 수 오름차순으로(백필 대상 선정)
 

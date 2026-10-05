@@ -13,6 +13,7 @@
 
 import 'server-only';
 
+import { isVersionBackup } from './file-utils';
 import { getIndexVersion, getLinkSnapshot, type LinkSnapshot } from './search-index';
 import { buildWikiIndex, resolveWikiTarget } from './wikilinks';
 
@@ -60,6 +61,10 @@ function resolveSnapshot(snapshot: LinkSnapshot): ResolvedGraph {
   const titles = new Map<string, string>();
   const tags = new Map<string, string[]>();
   for (const doc of snapshot.docs) {
+    // 저장할 때마다 같은 폴더에 남는 이전 버전(`이름_YYYYMMDD-HHmmss.md`)은 문서가 아니다.
+    // 파일 목록이 숨기는 것과 같은 기준으로 그래프·백링크에서도 뺀다 — 넣으면 저장할 때마다
+    // 같은 링크를 가진 복제 노드가 생기고 백링크에 옛 버전이 섞인다.
+    if (isVersionBackup(doc.subpath.slice(doc.subpath.lastIndexOf('/') + 1))) continue;
     titles.set(doc.subpath, doc.title);
     tags.set(doc.subpath, doc.tags);
   }
