@@ -91,6 +91,22 @@
 
 ---
 
+## Stage 7 — 프로젝트별 할일 · 업로드 연동 · 자동 완료 ⬜ **기획 · 승인 대기 (부가 기능 · 필수 로드맵 밖)**
+
+> 기획서: **[stage-7-todos-plan.md](stage-7-todos-plan.md)** · 목업: [mockups/](mockups/)
+> 착수 조건: Stage 6 맥미니 게이트 통과 + ADR-012 등재 승인. (D7-3 🆔 부여 · D7-4 체크 대조 후 권장안 — **2026-10-07 사용자 확정**)
+> 7b의 AI 판정은 ADR-011(CLI spawn) 승인에 종속된다.
+
+| 상태 | 작업 | 담당 | 산출물 |
+|------|------|------|--------|
+| ⬜ | 7a 할일 색인 · `/api/todos` · 리스트/칸반 페이지 | backend-dev / frontend-dev | `src/lib/todo-format.ts`, `/workspace/todos` |
+| ⬜ | 7b 자동 완료 (closes 규칙 → Claude CLI 판정 · launchd) | backend-dev / security-auth | `src/scripts/auto-complete-todos.mts` |
+| ⬜ | 7c 추가·완료 Webhook 알림 | backend-dev | `webhook.ts` 재사용 |
+| ⬜ | 검증 | validators / qa-integration | `docs/valid/*-stage-7-*.md` |
+| ⬜ | (선택) 7d PWA + Web Push | — | 별도 기획 |
+
+---
+
 ## 단계 완료 조건 (공통)
 1. 담당 개발 에이전트가 `docs/complete-work/`에 완료 기록 작성
 2. `frontend-validator` + `backend-validator` 리포트가 `docs/valid/`에 존재하고 **FAIL 0건**

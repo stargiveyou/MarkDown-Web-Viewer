@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todos Board Mockup</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8"/></symbol>
+  <symbol id="folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="kanban" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+  <symbol id="bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="sub" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="hist" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+</svg>
+
+<header class="hdr">
+  <span class="iconbtn"><svg class="i"><use href="#back"/></svg></span>
+  <h1>할일</h1>
+  <span class="crumb">/ <b>Vx-Unity-Golf-Dev</b></span>
+  <span class="spacer"></span>
+  <span class="seg"><span><svg class="i sm"><use href="#list"/></svg>리스트</span><span class="on"><svg class="i sm"><use href="#kanban"/></svg>칸반</span></span>
+  <span class="search"><svg class="i sm"><use href="#search"/></svg>할일 검색</span>
+  <span class="muted">마지막 자동 완료 · 오늘 18:00</span>
+  <span class="btn-amber"><svg class="i sm"><use href="#play"/></svg>자동 완료 지금 실행</span>
+</header>
+
+<div class="body">
+  <aside class="projects">
+    <div>
+      <div class="sec-title">프로젝트</div>
+      <div class="proj"><svg class="i"><use href="#folder"/></svg>Planting-Tool-Dev<span class="n">5</span></div>
+      <div class="proj"><svg class="i"><use href="#folder"/></svg>unity-ecs-defence<span class="n">3</span><span class="pill violet">1</span></div>
+      <div class="proj on"><svg class="i"><use href="#folder"/></svg>Vx-Unity-Golf-Dev<span class="n">9</span><span class="pill violet">2</span></div>
+      <div class="proj" style="padding-left:28px"><svg class="i sm"><use href="#folder"/></svg>CourseMigration<span class="n">3</span></div>
+      <div class="proj" style="padding-left:28px"><svg class="i sm"><use href="#folder"/></svg>GridLine<span class="n">2</span></div>
+      <div class="proj" style="padding-left:28px"><svg class="i sm"><use href="#folder"/></svg>Tree-Conversion<span class="n">1</span></div>
+      <div class="proj"><svg class="i"><use href="#folder"/></svg>Vx-Golf-Dev<span class="n">0</span></div>
+      <div style="font-size:10.5px;color:var(--t5);padding:6px 8px 0">TODO/ 폴더가 있는 폴더만 표시</div>
+    </div>
+    <div>
+      <div class="sec-title">필터</div>
+      <div class="proj"><svg class="i"><use href="#cal"/></svg>마감 있는 것만</div>
+      <div class="proj"><span class="tag" style="width:14px;text-align:center">#</span>frontend</div>
+      <div class="proj"><span class="tag" style="width:14px;text-align:center">#</span>backend</div>
+      <div class="proj"><span class="ai" style="display:inline-flex"><svg class="i"><use href="#bot"/></svg></span>AI가 바꾼 항목</div>
+    </div>
+    <div style="margin-top:auto" class="box">
+      <div class="box-h">드래그 · 키보드</div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.7">
+        카드 이동 = 상태 변경<br>
+        <span class="kbd">Space</span> 집기 · <span class="kbd">←</span><span class="kbd">→</span> 컬럼 이동<br>
+        정렬: 우선순위 → 마감
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="banner">
+      <span class="ico"><svg class="i lg"><use href="#bot"/></svg></span>
+      <div class="t"><b>오늘 18:00 자동 완료</b> — 작업 파일 7개 분석 · <span class="ok">✓ 3건 완료</span> · <span class="rv">? 2건 검토 필요</span></div>
+      <span class="spacer"></span>
+      <span class="btn">이력</span>
+    </div>
+
+    <div class="board">
+      <!-- 할일 -->
+      <section class="col">
+        <div class="col-h"><span class="dot" style="background:var(--t4)"></span>할일 <span class="c">4</span><span class="spacer"></span><svg class="i sm" style="color:var(--t4)"><use href="#plus"/></svg></div>
+        <div class="card p0">
+          <div class="tt">PWA 매니페스트 미들웨어 예외 추가</div>
+          <div class="meta"><span class="due over"><svg class="i sm"><use href="#cal"/></svg>10/6 · 1일 지남</span><span class="tag">#security</span></div>
+        </div>
+        <div class="card p1" style="opacity:.35">
+          <div class="tt">칸반 보드 페이지 추가</div>
+          <div class="meta"><span class="due"><svg class="i sm"><use href="#cal"/></svg>10/20</span><span class="tag">#frontend</span></div>
+          <div class="row2"><svg class="i sm"><use href="#sub"/></svg>1/2<div class="bar"><i style="width:50%"></i></div></div>
+        </div>
+        <div class="card p2">
+          <div class="tt">빠른 추가 자연어 해석 (내일, p1)</div>
+          <div class="meta"><span class="due"><svg class="i sm"><use href="#cal"/></svg>10/24</span><span class="tag">#frontend</span></div>
+        </div>
+        <div class="card">
+          <div class="tt">Web Push VAPID 키 발급 절차 문서화</div>
+          <div class="meta"><span class="due"><svg class="i sm"><use href="#cal"/></svg>10/27</span><span class="tag">#docs</span></div>
+        </div>
+        <div class="addcard"><svg class="i sm"><use href="#plus"/></svg>할일 추가</div>
+      </section>
+
+      <!-- 진행 중 -->
+      <section class="col" style="position:relative">
+        <div class="col-h"><span class="dot" style="background:var(--amber2)"></span>진행 중 <span class="c">2</span></div>
+        <div class="card p2">
+          <div class="tt">FTS 색인 재구축 스크립트 정리</div>
+          <div class="meta"><span class="tag">#backend</span><span class="ai"><svg class="i sm"><use href="#bot"/></svg>AI 표시</span></div>
+        </div>
+        <div class="ghost">여기에 놓기 — 진행 중으로 변경</div>
+        <div class="card">
+          <div class="tt">todo-format 왕복 테스트 픽스처</div>
+          <div class="meta"><span class="tag">#backend</span><span><svg class="i sm"><use href="#file"/></svg>TODO.md</span></div>
+          <div class="row2"><svg class="i sm"><use href="#sub"/></svg>2/5<div class="bar"><i style="width:40%"></i></div></div>
+        </div>
+        <!-- 드래그 중인 카드 -->
+        <div class="card p1 drag" style="position:absolute;left:34px;right:-18px;top:96px;z-index:5">
+          <div class="tt">칸반 보드 페이지 추가</div>
+          <div class="meta"><span class="due"><svg class="i sm"><use href="#cal"/></svg>10/20</span><span class="tag">#frontend</span></div>
+          <div class="row2"><svg class="i sm"><use href="#sub"/></svg>1/2<div class="bar"><i style="width:50%"></i></div></div>
+        </div>
+      </section>
+
+      <!-- 검토 필요 -->
+      <section class="col review">
+        <div class="col-h"><span class="dot" style="background:var(--violet)"></span><span style="color:var(--violet)">검토 필요</span> <span class="c">2</span></div>
+        <div class="col-note">AI 확신도 50~85% — 승인하면 완료, 반려하면 원래 상태로</div>
+        <div class="card" style="border-color:rgba(167,139,250,.35)">
+          <div class="tt">업로드 알림 문구 수정</div>
+          <div class="conf"><svg class="i sm" style="color:var(--violet)"><use href="#bot"/></svg>완료 추정<div class="bar"><i style="width:72%"></i></div><b style="color:var(--t2)">72%</b></div>
+          <div style="font-size:11.5px;color:var(--t3);line-height:1.5">알림 제목·본문 변경은 확인되나 Slack 쪽 반영 기록이 없음</div>
+          <span class="chip" style="align-self:flex-start"><svg class="i sm"><use href="#file"/></svg>2026-10-07-webhook-copy.md</span>
+          <div class="rv-actions"><span class="approve"><svg class="i sm"><use href="#check"/></svg>승인</span><span class="reject"><svg class="i sm"><use href="#undo"/></svg>반려</span></div>
+        </div>
+        <div class="card" style="border-color:rgba(167,139,250,.35)">
+          <div class="tt">launchd plist 작성</div>
+          <div class="conf"><svg class="i sm" style="color:var(--violet)"><use href="#bot"/></svg>완료 추정<div class="bar"><i style="width:64%"></i></div><b style="color:var(--t2)">64%</b></div>
+          <span class="chip" style="align-self:flex-start"><svg class="i sm"><use href="#file"/></svg>macmini-setup-log.md</span>
+          <div class="rv-actions"><span class="approve"><svg class="i sm"><use href="#check"/></svg>승인</span><span class="reject"><svg class="i sm"><use href="#undo"/></svg>반려</span></div>
+        </div>
+      </section>
+
+      <!-- 완료 -->
+      <section class="col">
+        <div class="col-h"><span class="dot" style="background:var(--green)"></span>완료 <span class="c">14</span></div>
+        <div class="card done">
+          <div class="tt">폴더 ZIP 다운로드 웹 UI 노출</div>
+          <div class="meta"><span class="ai"><svg class="i sm"><use href="#bot"/></svg>자동 92%</span><span>✅ 10/5</span><span style="color:var(--t3)"><svg class="i sm"><use href="#undo"/></svg>되돌리기</span></div>
+        </div>
+        <div class="card done">
+          <div class="tt">업로드 캘린더 페이지</div>
+          <div class="meta"><span class="ok" style="font-weight:500">✓ closes 규칙</span><span>✅ 10/3</span></div>
+        </div>
+        <div class="card done">
+          <div class="tt">AI 패널 CLI 폴백 4종 수정</div>
+          <div class="meta"><span class="ai"><svg class="i sm"><use href="#bot"/></svg>자동 88%</span><span>✅ 10/2</span></div>
+        </div>
+        <div class="card done">
+          <div class="tt">업로드 완료 Webhook 알림</div>
+          <div class="meta"><span>직접 체크</span><span>✅ 9/29</span></div>
+        </div>
+        <div class="more">10개 더 보기</div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>
