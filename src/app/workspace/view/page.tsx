@@ -23,6 +23,7 @@ import { ArrowLeft, Download, Pencil, Share2, Loader2 } from 'lucide-react';
 import { extractDocTitle } from '@/lib/doc-title';
 import { apiFetch, apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
+import { BOOT_RETRY_PARAM, BootFallback } from '@/components/ui/BootFallback';
 import { MermaidBlock } from '@/components/workspace/MermaidBlock';
 import { ZoomableImage, isSvgSource } from '@/components/workspace/SvgViewer';
 import { ShareModal } from '@/components/workspace/ShareModal';
@@ -84,6 +85,15 @@ function ViewerPageInner() {
   } | null>(null);
   const links = linkState?.path === path ? linkState.data : null;
   const linksFailed = linkState?.path === path && linkState.failed;
+
+  const bootRetried = searchParams.has(BOOT_RETRY_PARAM);
+
+  // 하이드레이션 복구(BootFallback)가 붙인 재시도 표식은 정상 로드 후 URL에서 지운다.
+  // 남겨 두면 공유·북마크된 URL에 묻어 다음 실패 시 자동 재시도가 막힌다.
+  useEffect(() => {
+    if (!bootRetried || !path) return;
+    router.replace(`/workspace/view?path=${encodeURIComponent(path)}`, { scroll: false });
+  }, [bootRetried, path, router]);
 
   useEffect(() => {
     if (!path) {
@@ -337,16 +347,7 @@ function ViewerPageInner() {
 
 export default function ViewerPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 items-center justify-center bg-zinc-950">
-          <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
-          <span className="ml-2 text-sm text-zinc-500">
-            뷰어를 불러오는 중...
-          </span>
-        </div>
-      }
-    >
+    <Suspense fallback={<BootFallback label="뷰어를 불러오는 중..." />}>
       <ViewerPageInner />
     </Suspense>
   );
