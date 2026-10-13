@@ -4,18 +4,21 @@
  * 뷰어 본문의 `<a>` 렌더러 — 문서 간 링크를 앱 안 이동으로 바꾼다.
  *
  *   - `[[위키링크]]` (remark-wikilinks가 `data-wikilink`를 단 링크)
- *       → `/api/links`가 알려준 실제 문서로 이동. 없는 문서면 점선 "아직 없는 문서" 표시
- *   - 상대 `.md` 링크 → 현재 문서 기준으로 해석해 뷰어로 이동
+ *       → `/api/links`가 알려준 실제 문서를 **새 창**에서 연다. 없는 문서면 점선 "아직 없는 문서" 표시
+ *   - 상대 `.md` 링크 → 현재 문서 기준으로 해석해 **새 창**의 뷰어에서 연다
  *   - 외부 URL → 새 탭 (`noopener noreferrer`)
  *   - 그 밖(`#앵커` 등) → 기본 동작
+ *
+ * 문서 링크를 새 창에서 여는 이유는 읽던 문서를 잃지 않기 위해서다. 새 창으로 여는 방식은
+ * `@/lib/viewer-nav`에 모여 있다. 새 창이므로 `next/link`의 prefetch는 쓸모가 없어 `<a>`를 쓴다.
  *
  * 링크 해석 결과는 컨텍스트로 받는다. 렌더러 함수를 `useMemo` 의존성에 넣으면
  * 링크 정보가 도착할 때 본문 전체가 리마운트되어 스크롤이 무너지기 때문이다.
  */
 
-import Link from 'next/link';
 import { createContext, useContext } from 'react';
 
+import { NEW_WINDOW_LINK_PROPS, viewerHref } from '@/lib/viewer-nav';
 import { resolveMarkdownHref } from '@/lib/wikilinks';
 import type { LinksResponse } from '@/types/api';
 
@@ -27,10 +30,6 @@ export interface DocLinkContextValue {
 }
 
 export const DocLinkContext = createContext<DocLinkContextValue>({ sourcePath: '', links: null });
-
-export function viewerHref(subpath: string): string {
-  return `/workspace/view?path=${encodeURIComponent(subpath)}`;
-}
 
 const INTERNAL_CLASS = 'text-amber-300 decoration-amber-500/50 hover:text-amber-200';
 const GHOST_CLASS =
@@ -52,9 +51,14 @@ export function DocLink({ href, children, node: _node, ...rest }: AnchorProps) {
     const entry = links?.outgoing.find((l) => l.kind === 'wiki' && l.raw === wikiKey);
     if (entry?.resolved) {
       return (
-        <Link href={viewerHref(entry.resolved)} className={INTERNAL_CLASS} title={entry.title}>
+        <a
+          href={viewerHref(entry.resolved)}
+          className={INTERNAL_CLASS}
+          title={entry.title}
+          {...NEW_WINDOW_LINK_PROPS}
+        >
           {children}
-        </Link>
+        </a>
       );
     }
     // 링크 정보가 아직 없거나(로딩·색인 전) 대상 문서가 없다.
@@ -87,9 +91,9 @@ export function DocLink({ href, children, node: _node, ...rest }: AnchorProps) {
   const target = resolveMarkdownHref(href, sourcePath);
   if (target) {
     return (
-      <Link href={viewerHref(target)} className={INTERNAL_CLASS}>
+      <a href={viewerHref(target)} className={INTERNAL_CLASS} {...NEW_WINDOW_LINK_PROPS}>
         {children}
-      </Link>
+      </a>
     );
   }
 

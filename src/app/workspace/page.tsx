@@ -27,6 +27,7 @@ import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspac
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
 import { clearUploadLog, refreshUploadLog, useUploadLog } from '@/lib/upload-log-store';
+import { openViewer } from '@/lib/viewer-nav';
 import type { UploadLogEntry } from '@/lib/upload-log';
 import { Loader2, Plus, FolderPlus, AlertTriangle } from 'lucide-react';
 import type {
@@ -288,7 +289,8 @@ function WorkspacePageInner() {
     }
 
     if (entry.type === 'markdown') {
-      router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
+      // 문서는 새 창에서 연다 — 보고 있던 폴더 목록이 그대로 남아 있어야 한다.
+      openViewer(entry.subpath);
     } else if (entry.type === 'image') {
       // SVG는 벡터라 확대해도 깨지지 않으므로 앱 안의 확대 뷰어로 연다.
       if (isSvgSource(entry.name)) {
@@ -568,7 +570,7 @@ function WorkspacePageInner() {
       <BottomAiPanel
         onSelectFile={(filePath) => {
           if (filePath.endsWith('.md')) {
-            router.push(`/workspace/view?path=${encodeURIComponent(filePath)}`);
+            openViewer(filePath);
           } else {
             router.push(`/workspace?path=${encodeURIComponent(filePath)}`);
           }

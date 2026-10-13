@@ -5,13 +5,13 @@
  *
  * - SearchResult[]를 카드로 렌더
  * - snippet 내 [[hl]]...[[/hl]] 마커를 <mark>로 변환 (dangerouslySetInnerHTML 사용 금지)
- * - 카드 클릭 시 /workspace/view?path=... 로 이동
+ * - 카드 클릭 시 /workspace/view?path=... 를 새 창에서 연다 (검색 결과 유지)
  * - 결과 0건이면 안내 메시지
  * - indexing 상태이면 색인 구축 중 안내
  */
 
-import { useRouter } from 'next/navigation';
 import { AlertTriangle, FileText } from 'lucide-react';
+import { openViewer } from '@/lib/viewer-nav';
 import { SNIPPET_MARK } from '@/types/api';
 import type { SearchResult } from '@/types/api';
 import type { ReactNode } from 'react';
@@ -89,10 +89,8 @@ function formatRelativeTime(epochMs: number): string {
 }
 
 export function SearchResults({ query, results, indexing }: SearchResultsProps) {
-  const router = useRouter();
-
   function handleCardClick(subpath: string) {
-    router.push(`/workspace/view?path=${encodeURIComponent(subpath)}`);
+    openViewer(subpath);
   }
 
   return (

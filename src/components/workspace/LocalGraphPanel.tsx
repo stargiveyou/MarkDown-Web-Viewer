@@ -9,13 +9,12 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2, Network } from 'lucide-react';
 
 import { emitToast } from '@/components/ui/toast-bus';
-import { viewerHref } from '@/components/workspace/DocLink';
 import { useGraph } from '@/components/workspace/use-graph';
+import { openViewer } from '@/lib/viewer-nav';
 import type { GraphNode } from '@/types/api';
 
 // canvas·window를 쓰므로 서버 렌더에서 제외한다.
@@ -36,7 +35,6 @@ function GraphLoading() {
 const DEPTHS = [1, 2, 3] as const;
 
 export function LocalGraphPanel({ path }: { path: string }) {
-  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [depth, setDepth] = useState<number>(1);
   const [tags, setTags] = useState(false);
@@ -45,12 +43,12 @@ export function LocalGraphPanel({ path }: { path: string }) {
   const handleSelect = useCallback(
     (node: GraphNode) => {
       if (node.type === 'doc') {
-        if (node.id !== path) router.push(viewerHref(node.id));
+        if (node.id !== path) openViewer(node.id);
       } else if (node.type === 'ghost') {
         emitToast({ message: `"${node.label}" 문서는 아직 없습니다.`, variant: 'info' });
       }
     },
-    [path, router],
+    [path],
   );
 
   if (failed) return null;

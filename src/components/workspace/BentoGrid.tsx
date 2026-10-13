@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Folder, FileText, File, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
+import { NEW_WINDOW_LINK_PROPS, viewerHref } from '@/lib/viewer-nav';
 import type { FileEntry, FileVersion, FileVersionsResponse } from '@/types/api';
 
 export interface BentoGridProps {
@@ -429,14 +430,13 @@ function FileCard({
                 {versions.map((ver) => {
                   const isMd = ver.name.endsWith('.md') || ver.name.endsWith('.markdown');
                   const href = isMd
-                    ? `/workspace/view?path=${encodeURIComponent(ver.subpath)}`
+                    ? viewerHref(ver.subpath)
                     : `/api/download?path=${encodeURIComponent(ver.subpath)}`;
                   return (
                     <a
                       key={ver.subpath}
                       href={href}
-                      target={isMd ? undefined : '_blank'}
-                      rel={isMd ? undefined : 'noopener noreferrer'}
+                      {...NEW_WINDOW_LINK_PROPS}
                       onClick={(e) => e.stopPropagation()}
                       className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 transition-colors"
                     >

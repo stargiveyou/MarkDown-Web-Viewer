@@ -7,10 +7,9 @@
  * 본문 아래 접이식 영역으로 둔다.
  */
 
-import Link from 'next/link';
 import { CornerDownRight, FileQuestion, Link2 } from 'lucide-react';
 
-import { viewerHref } from '@/components/workspace/DocLink';
+import { NEW_WINDOW_LINK_PROPS, viewerHref } from '@/lib/viewer-nav';
 import type { LinksResponse } from '@/types/api';
 
 export interface BacklinksPanelProps {
@@ -52,9 +51,10 @@ export function BacklinksPanel({ links, failed }: BacklinksPanelProps) {
         <ul className="mt-3 space-y-2">
           {links.backlinks.map((b) => (
             <li key={b.source}>
-              <Link
+              <a
                 href={viewerHref(b.source)}
                 className="group block rounded-lg px-3 py-2 transition-colors hover:bg-zinc-800/70 focus-visible:outline-2 focus-visible:outline-amber-500"
+                {...NEW_WINDOW_LINK_PROPS}
               >
                 <span className="block text-sm font-medium text-amber-300 group-hover:text-amber-200">
                   {b.title}
@@ -66,7 +66,7 @@ export function BacklinksPanel({ links, failed }: BacklinksPanelProps) {
                     <span className="line-clamp-2">{b.context}</span>
                   </span>
                 )}
-              </Link>
+              </a>
             </li>
           ))}
         </ul>

@@ -16,8 +16,8 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 import { emitToast } from '@/components/ui/toast-bus';
-import { viewerHref } from '@/components/workspace/DocLink';
 import { useGraph } from '@/components/workspace/use-graph';
+import { openViewer } from '@/lib/viewer-nav';
 import type { GraphNode } from '@/types/api';
 
 const GraphCanvas = dynamic(() => import('@/components/workspace/GraphCanvas'), {
@@ -49,12 +49,12 @@ function GraphPageInner() {
 
   const handleSelect = useCallback(
     (node: GraphNode) => {
-      if (node.type === 'doc') router.push(viewerHref(node.id));
+      if (node.type === 'doc') openViewer(node.id);
       else if (node.type === 'ghost') {
         emitToast({ message: `"${node.label}" 문서는 아직 없습니다.`, variant: 'info' });
       }
     },
-    [router],
+    [],
   );
 
   const docCount = data?.nodes.filter((n) => n.type === 'doc').length ?? 0;

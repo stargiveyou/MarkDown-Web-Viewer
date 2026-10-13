@@ -22,6 +22,7 @@ import {
 import { emitToast } from '@/components/ui/toast-bus';
 import { isMarkdownName } from '@/lib/doc-title';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
+import { openViewer } from '@/lib/viewer-nav';
 import {
   buildMonthCells,
   byDayKey,
@@ -143,9 +144,9 @@ function CalendarPageInner() {
 
   const handleOpen = useCallback(
     (entry: UploadHistoryEntry) => {
-      // 문서는 뷰어로, 그 외 파일은 담긴 폴더로 보낸다.
+      // 문서는 새 창 뷰어로, 그 외 파일은 담긴 폴더로 보낸다.
       if (isMarkdownName(entry.name)) {
-        router.push(`/workspace/view?path=${encodeURIComponent(entry.subpath)}`);
+        openViewer(entry.subpath);
         return;
       }
       const folder = folderOf(entry.subpath);
