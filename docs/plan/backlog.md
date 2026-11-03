@@ -109,6 +109,10 @@ Stage 1~5(필수 로드맵) 완료 (2026-07-25). 현재 진행 중인 것은 **�
 | 42 | `![[문서]]` 임베드 본문 삽입 | 지금은 문서 임베드를 일반 링크로만 렌더한다(그래프에는 연결로 반영됨). 본문을 펼쳐 넣으려면 재귀·순환 방지와 권한 경계(같은 루트) 확인 필요 |
 | 43 | 그래프 실기기·대규모 확인 | 아이폰 PWA에서 로컬 그래프 터치 조작(핀치 줌·드래그)과, 문서 수백~천 개 운영 데이터에서 전체 그래프 성능·`truncated` 동작을 맥미니에서 확인 |
 | 44 | 이전 버전 파일이 검색 색인에 섞임 | 에디터·API 저장은 같은 폴더에 `이름_YYYYMMDD-HHmmss.md`를 남긴다. 파일 목록(`/api/files`)과 그래프·백링크는 `isVersionBackup()`으로 숨기지만 검색 색인(`scanMarkdownFiles`)은 거르지 않아 **검색 결과에 옛 버전이 나온다**(기존 동작). 링크 백필([ops-server-docs-link-backfill.md](../agent-work/ops-server-docs-link-backfill.md))로 문서마다 버전이 하나씩 늘어나므로 눈에 띄게 된다. `scanMarkdownFiles`에서 거르면 다음 기동의 증분 빌드가 기존 항목도 지운다 — 옛 버전 검색이 필요한지 판단 필요 |
+| 45 | PDF 뷰어 실기기·브라우저 확인 | PDF 지원(2026-11-03)은 Windows 개발기에서 lint·typecheck·build·실서버 curl만 통과했고 **브라우저 캔버스 렌더를 한 번도 보지 못했다.** 맥미니에서 [macmini-pdf-deploy.md](macmini-pdf-deploy.md)의 G·S·F·M·P 전체를 돌린다. `.env.local`의 `ALLOWED_EXTENSIONS`에 `pdf`를 넣지 않으면 업로드는 415로 막힌 상태다 |
+| 46 | PDF 본문 텍스트 선택·검색 불가 | canvas 전용 렌더라 복사·`Ctrl+F`·FTS5 색인이 모두 안 된다. pdf.js `TextLayer`를 얹으면 선택·브라우저 검색이 되고(페이지별 `getTextContent()`), 더 나아가면 PDF 본문을 검색 색인에 넣을 수도 있다. 다만 ADR-007(색인만 읽기)과 색인 크기·재색인 비용을 함께 판단해야 한다 |
+| 47 | PDF 카드 썸네일 없음 | 마크다운·이미지 카드는 `coverThumbUrl`이 있는데 PDF는 아이콘뿐이다. `sharp`는 PDF를 읽지 못하므로(pdfium 미포함) 첫 페이지 썸네일을 만들려면 서버에서 pdf.js + `@napi-rs/canvas`(이미 설치돼 있다)로 렌더해 `.thumbcache`에 넣는 별도 경로가 필요하다 |
+| 48 | 큰 PDF Range 요청 미지원 | `/api/pdf`는 전체를 스트리밍하고 `Range`를 받지 않아, pdf.js가 점진적 로딩을 못 하고 200MB에서 413으로 끊는다. ngrok 회선에서 수십 MB 문서를 열 때 첫 페이지까지 대기가 길다. `Accept-Ranges`/206 구현 시 pdf.js의 `disableRange` 기본값과 함께 검토 |
 
 ---
 

@@ -315,3 +315,32 @@
   - 함께 고친 것: 저장 시 남는 이전 버전 파일(`이름_YYYYMMDD-HHmmss.md`)을 그래프·백링크에서 제외(회귀 테스트 추가) — 백필로 문서마다 버전이 생겨 복제 노드가 될 뻔했다
   - `mdws.sh list [폴더]` 추가 — 전체 문서를 연결 수 오름차순으로(백필 대상 선정)
 
+
+### 2026-11-03 — PDF 업로드·다운로드·뷰어
+- 담당: 직접 작업 (서브에이전트 미사용) · 필수 로드맵 밖 부가 기능
+- **분류**: `EntryType`에 `pdf` 추가([src/types/api.ts](../../src/types/api.ts)) — `other`에서 분리해 프론트가 확장자를 다시 보지 않게 한다.
+  [classifyEntry·isPdf](../../src/lib/file-utils.ts)
+- **서빙**: `GET /api/pdf?path=` ([route.ts](../../src/app/api/pdf/route.ts)) — `Content-Disposition: inline` + `createReadStream` 스트리밍.
+  경로 안전 유틸 경유(불변식 2), 분당 60회 rate limit(불변식 7), 200MB 초과는 413, 공용 캐시 금지(`private, must-revalidate`).
+  `/api/download`에는 `application/pdf` MIME만 추가해 **다운로드(attachment)와 열람(inline)을 분리**했다
+- **뷰어**: [/workspace/pdf](../../src/app/workspace/pdf/page.tsx) + [PdfViewer](../../src/components/workspace/PdfViewer.tsx)
+  — pdf.js canvas 렌더(연속 스크롤, 폭 맞춤·확대·페이지 이동, 보이는 범위 ±1.5화면만 캔버스 유지)
+  - `<iframe>`/`<embed>`를 쓰지 않은 이유 2가지: 미들웨어의 `X-Frame-Options: DENY`가 같은 오리진 삽입까지 막는다 /
+    iOS Safari는 프레임 안 PDF를 첫 페이지만 렌더한다(홈 화면 설치 PWA가 주 사용 환경)
+  - **legacy 빌드**를 쓴다 — 기본 빌드는 `Promise.try`를 폴리필 없이 내보내 조금 옛 iOS Safari에서 문서가 열리지 않는다.
+    legacy는 core-js 폴리필을 본체·워커 양쪽에 담고 있다(실측 확인)
+  - 한글 PDF: CMap(`cmaps/`)을 함께 서빙해야 폰트 미임베드 문서의 글자가 깨지지 않는다
+  - 바이트는 [apiBytes](../../src/lib/fetcher.ts)로 받는다 — pdf.js에 URL을 넘기면 401 리다이렉트·429 처리가 빠진다
+- **자산**: [scripts/copy-pdfjs.mjs](../../scripts/copy-pdfjs.mjs)가 워커·cmaps·standard_fonts·wasm·iccs를 `public/pdfjs/`로 복사(5MB, gitignore).
+  미들웨어 매처에서 `pdfjs/` 제외 — 워커는 리다이렉트가 끼면 로드되지 않는다
+- **열기 경로 통일**: [viewerHrefFor](../../src/lib/viewer-nav.ts)를 추가해 마크다운/PDF/그 외를 한곳에서 분기.
+  푸시 알림·Discord/Slack 공유 URL·캘린더·AI 패널이 모두 이 함수를 쓴다(PDF 링크가 마크다운 뷰어로 가서 빈 화면이 되는 것을 막는다)
+- **설정 필요**: `.env.local`의 `ALLOWED_EXTENSIONS`에 `pdf`를 넣어야 업로드가 열린다(없으면 415). 큰 스캔 문서는 `UPLOAD_MAX_BYTES`도 상향
+- 검증 (Windows 개발기, Node 22.17.1): lint 0 · typecheck 0 · build 성공 · 신규 유닛 테스트 10건 통과
+  (전체 테스트는 변경 전후 동일하게 32건 실패 — `MARKDOWN_ROOT` 절대경로 검증이 Windows 임시경로를 거부하는 기존 환경 제약)
+  - 실서버(`next start`) curl: 미인증 `/api/pdf` 401 · `/workspace/pdf` 307 → `/login` · 정상 200(바이트 일치) ·
+    경로탈출·절대경로·인코딩 우회·PDF 아님·없는 파일·`path` 누락 전부 400 · 61번째 요청 429(Retry-After) ·
+    PDF 업로드 200 / `.exe` 415 · 한글 파일명 `filename*=UTF-8''` 왕복 · `/pdfjs/*` 무인증 200
+  - pdf.js 호출부(getDocument → getViewport → render)는 Node에서 같은 순서로 재현해 **실제 픽셀이 그려지는 것까지** 확인
+- 미확인 (실기기·브라우저 필요): 브라우저에서의 실제 캔버스 렌더·스크롤 lazy 렌더·iPhone Safari 동작, 수백 페이지 문서의 메모리 거동
+- 맥미니에서 돌릴 점검 목록: [macmini-pdf-deploy.md](macmini-pdf-deploy.md) — `.env.local` 수정(E-1)이 첫 항목이다
