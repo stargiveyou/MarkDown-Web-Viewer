@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, FileText, File, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
+import { Folder, FileText, File, FileType, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
 import { NEW_WINDOW_LINK_PROPS, viewerHref } from '@/lib/viewer-nav';
@@ -274,6 +274,7 @@ function FileCard({
   onDeleteClick?: (entry: FileEntry) => void;
 }) {
   const isMarkdown = entry.type === 'markdown';
+  const isPdf = entry.type === 'pdf';
   const isUnread = entry.unread === true;
 
   const [versionOpen, setVersionOpen] = useState(false);
@@ -346,6 +347,8 @@ function FileCard({
           <div className="flex aspect-video w-full items-center justify-center bg-slate-900/50">
             {isMarkdown ? (
               <FileText className="h-10 w-10 text-slate-700" />
+            ) : isPdf ? (
+              <FileType className="h-10 w-10 text-red-400/70" />
             ) : (
               <File className="h-10 w-10 text-slate-700" />
             )}

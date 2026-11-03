@@ -19,6 +19,9 @@ next-env.d.ts
 # Monaco 자산 — node_modules에서 복사(scripts/copy-monaco.mjs)해 재생성 가능하므로 추적하지 않는다.
 /public/monaco/
 
+# pdf.js 자산 — node_modules에서 복사(scripts/copy-pdfjs.mjs)해 재생성 가능하므로 추적하지 않는다.
+/public/pdfjs/
+
 # 런타임 데이터 — 검색 색인과 썸네일 캐시는 재생성 가능하므로 추적하지 않는다.
 /.cache/
 *.sqlite

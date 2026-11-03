@@ -31,6 +31,7 @@ import {
   toSubpath,
 } from '@/lib/path-safety';
 import { checkRateLimit, rateLimitKeyFor, RATE_LIMIT_POLICY } from '@/lib/rate-limit';
+import { viewerHref, viewerHrefFor } from '@/lib/viewer-nav';
 import { sendWebhook, type WebhookPayload } from '@/lib/webhook';
 import type { ShareNotifyRequest, ShareNotifyResponse, ShareTarget } from '@/types/api';
 
@@ -106,7 +107,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const proto = sanitizeProto(request.headers.get('x-forwarded-proto'));
   const host = request.headers.get('host') || 'localhost:3000';
   const subpath = toSubpath(absolutePath);
-  const appUrl = `${proto}://${host}/workspace/view?path=${encodeURIComponent(subpath)}`;
+  // 파일 종류에 맞는 뷰어로 보낸다 — PDF 링크가 마크다운 뷰어로 가면 수신자에게 빈 화면이 뜬다.
+  const appUrl = `${proto}://${host}${viewerHrefFor(subpath) ?? viewerHref(subpath)}`;
 
   // --- 8. Webhook 호출 -------------------------------------------------------
   const fileName = path.basename(subpath);

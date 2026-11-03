@@ -201,6 +201,38 @@ export function apiUpload<T>(
 }
 
 /**
+ * 바이너리 본문을 받아오는 호출 (PDF 뷰어가 `/api/pdf`에서 원본 바이트를 받을 때 쓴다).
+ *
+ * `apiFetch`와 분리된 이유는 응답 파싱뿐이다 — 401 리다이렉트·429 토스트·`ApiRequestError`
+ * 정규화는 동일하게 거친다. 라이브러리(pdf.js)에 URL을 그대로 넘기면 이 처리가 전부 빠지므로,
+ * 바이트는 여기서 받아 넘긴다.
+ */
+export async function apiBytes(input: string, init?: RequestInit): Promise<ArrayBuffer> {
+  let res: Response;
+
+  try {
+    res = await fetch(input, {
+      credentials: 'same-origin',
+      ...init,
+      headers: new Headers(init?.headers),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    throw new ApiRequestError(502, DEFAULT_MESSAGES[502]);
+  }
+
+  if (!res.ok) {
+    const body = parseJson(await res.text());
+    const code = normalizeCode(res.status);
+    const message = pickMessage(code, body);
+    handleStatusSideEffects(code, message, true);
+    throw new ApiRequestError(code, message);
+  }
+
+  return res.arrayBuffer();
+}
+
+/**
  * 파일/폴더 다운로드. 브라우저의 기본 다운로드 UX를 활용한다.
  *
  * 성공 시 `response.blob()` → `URL.createObjectURL` → `<a>` 클릭으로 다운로드를 트리거한다.

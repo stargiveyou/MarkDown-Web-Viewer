@@ -42,6 +42,7 @@ import { notifyUploadPush } from '@/lib/push';
 import { checkRateLimit, rateLimitKeyFor } from '@/lib/rate-limit';
 import { indexFile } from '@/lib/search-index';
 import { recordUploadHistory } from '@/lib/upload-history';
+import { viewerHref, viewerHrefFor } from '@/lib/viewer-nav';
 import { sendWebhook, type WebhookPayload } from '@/lib/webhook';
 import {
   UPLOAD_FIELD,
@@ -299,7 +300,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const proto = sanitizeProto(request.headers.get('x-forwarded-proto'));
     const host = request.headers.get('host') || 'localhost:3000';
     const firstFile = saved[0];
-    const appUrl = `${proto}://${host}/workspace/view?path=${encodeURIComponent(firstFile.subpath)}`;
+    // 파일 종류에 맞는 뷰어로 보낸다(PDF면 /workspace/pdf).
+    const appUrl = `${proto}://${host}${viewerHrefFor(firstFile.subpath) ?? viewerHref(firstFile.subpath)}`;
 
     const payload: WebhookPayload = {
       fileName: saved.length === 1

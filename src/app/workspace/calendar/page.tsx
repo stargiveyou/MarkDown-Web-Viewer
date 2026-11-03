@@ -20,9 +20,8 @@ import {
 } from 'lucide-react';
 
 import { emitToast } from '@/components/ui/toast-bus';
-import { isMarkdownName } from '@/lib/doc-title';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
-import { openViewer } from '@/lib/viewer-nav';
+import { openInNewWindow, viewerHrefFor } from '@/lib/viewer-nav';
 import {
   buildMonthCells,
   byDayKey,
@@ -144,9 +143,10 @@ function CalendarPageInner() {
 
   const handleOpen = useCallback(
     (entry: UploadHistoryEntry) => {
-      // 문서는 새 창 뷰어로, 그 외 파일은 담긴 폴더로 보낸다.
-      if (isMarkdownName(entry.name)) {
-        openViewer(entry.subpath);
+      // 문서(마크다운·PDF)는 각자의 뷰어를 새 창으로, 그 외 파일은 담긴 폴더로 보낸다.
+      const href = viewerHrefFor(entry.subpath);
+      if (href) {
+        openInNewWindow(href);
         return;
       }
       const folder = folderOf(entry.subpath);

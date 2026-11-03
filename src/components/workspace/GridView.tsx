@@ -7,13 +7,14 @@
  * - folder: Folder 아이콘 + 이름 + fileCount
  * - markdown: coverThumbUrl(있으면 img) 또는 FileText 아이콘 + title/name + snippet + tags
  * - image: 썸네일 img + 파일명
+ * - pdf: FileType 아이콘 + 파일명 + 크기 (클릭 시 PDF 뷰어)
  * - other: File 아이콘 + 파일명 + 크기
  *
  * 모든 이미지는 <img> 태그만 사용한다 (D2-1: SVG XSS 방어).
  * 썸네일 URL은 서버가 coverThumbUrl에 이미 /api/thumbnail?... 형태로 제공한다.
  */
 
-import { Folder, FileText, File, Download } from 'lucide-react';
+import { Folder, FileText, File, FileType, Download } from 'lucide-react';
 import { apiDownload, toApiRequestError } from '@/lib/fetcher';
 import { emitToast } from '@/components/ui/toast-bus';
 import type { FileEntry } from '@/types/api';
@@ -100,6 +101,8 @@ function CardItem({ entry, onFolderClick, onFileClick }: CardItemProps) {
       return <MarkdownCard entry={entry} onClick={onFileClick} />;
     case 'image':
       return <ImageCard entry={entry} onClick={onFileClick} />;
+    case 'pdf':
+      return <PdfCard entry={entry} onClick={onFileClick} />;
     case 'other':
       return <OtherCard entry={entry} />;
     default:
@@ -229,6 +232,31 @@ function ImageCard({ entry, onClick }: { entry: FileEntry; onClick: (entry: File
           {formatSize(entry.size)}
         </span>
       </div>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PDF 카드
+// ---------------------------------------------------------------------------
+
+function PdfCard({ entry, onClick }: { entry: FileEntry; onClick: (entry: FileEntry) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(entry)}
+      className="group relative flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
+    >
+      <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <DownloadButton subpath={entry.subpath} name={entry.name} />
+      </div>
+      <FileType className="h-10 w-10 text-red-500/80 dark:text-red-400/70" />
+      <span className="w-full truncate text-center text-sm text-zinc-900 dark:text-zinc-100">
+        {entry.name}
+      </span>
+      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+        {formatSize(entry.size)}
+      </span>
     </button>
   );
 }

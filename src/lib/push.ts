@@ -25,8 +25,8 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import webpush, { WebPushError } from 'web-push';
 
-import { isMarkdownName } from './doc-title';
 import { getServerEnv } from './env';
+import { viewerHrefFor } from './viewer-nav';
 
 import type { PushNotificationPayload, UploadedFileInfo } from '@/types/api';
 
@@ -160,9 +160,8 @@ export function buildUploadPushPayload(
     return {
       title: '📄 새 문서가 업로드되었습니다',
       body: truncate(`${file.name} · ${where}`, MAX_BODY_LENGTH),
-      url: isMarkdownName(file.name)
-        ? `/workspace/view?path=${encodeURIComponent(file.subpath)}`
-        : folderUrl(folderSubpath),
+      // 마크다운·PDF는 각자의 뷰어로, 그 밖의 파일은 담긴 폴더로 보낸다.
+      url: viewerHrefFor(file.subpath) ?? folderUrl(folderSubpath),
       tag: `upload:${file.subpath}`,
     };
   }

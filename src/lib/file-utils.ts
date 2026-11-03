@@ -14,6 +14,7 @@ import type { EntryType } from '@/types/api';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown']);
+const PDF_EXTENSIONS = new Set(['pdf']);
 
 /** sharp가 처리할 수 있는 래스터 이미지(SVG 제외). */
 const THUMBNAIL_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
@@ -32,7 +33,13 @@ export function classifyEntry(name: string, isDirectory: boolean): EntryType {
   const ext = extOf(name);
   if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown';
   if (IMAGE_EXTENSIONS.has(ext)) return 'image';
+  if (PDF_EXTENSIONS.has(ext)) return 'pdf';
   return 'other';
+}
+
+/** PDF인지 확인한다. `/api/pdf`가 응답 대상을 판정할 때 쓴다. */
+export function isPdf(name: string): boolean {
+  return PDF_EXTENSIONS.has(extOf(name));
 }
 
 /** sharp 리사이즈가 가능한 래스터 이미지인지 확인한다. */

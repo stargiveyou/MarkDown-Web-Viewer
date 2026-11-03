@@ -27,7 +27,7 @@ import { SvgFileViewer, buildImageUrl, isSvgSource } from '@/components/workspac
 import { emitToast } from '@/components/ui/toast-bus';
 import { apiFetch, toApiRequestError } from '@/lib/fetcher';
 import { clearUploadLog, refreshUploadLog, useUploadLog } from '@/lib/upload-log-store';
-import { openViewer } from '@/lib/viewer-nav';
+import { openInNewWindow, openPdfViewer, openViewer, viewerHrefFor } from '@/lib/viewer-nav';
 import type { UploadLogEntry } from '@/lib/upload-log';
 import { Loader2, Plus, FolderPlus, AlertTriangle } from 'lucide-react';
 import type {
@@ -291,6 +291,9 @@ function WorkspacePageInner() {
     if (entry.type === 'markdown') {
       // 문서는 새 창에서 연다 — 보고 있던 폴더 목록이 그대로 남아 있어야 한다.
       openViewer(entry.subpath);
+    } else if (entry.type === 'pdf') {
+      // PDF도 전용 뷰어를 새 창에서 연다 (pdf.js 렌더).
+      openPdfViewer(entry.subpath);
     } else if (entry.type === 'image') {
       // SVG는 벡터라 확대해도 깨지지 않으므로 앱 안의 확대 뷰어로 연다.
       if (isSvgSource(entry.name)) {
@@ -569,8 +572,10 @@ function WorkspacePageInner() {
       {/* Mac mini Claude AI 하단 탐색 패널 */}
       <BottomAiPanel
         onSelectFile={(filePath) => {
-          if (filePath.endsWith('.md')) {
-            openViewer(filePath);
+          // 마크다운·PDF는 각자의 뷰어로, 그 외에는 폴더 목록으로 보낸다.
+          const href = viewerHrefFor(filePath);
+          if (href) {
+            openInNewWindow(href);
           } else {
             router.push(`/workspace?path=${encodeURIComponent(filePath)}`);
           }

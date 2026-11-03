@@ -139,6 +139,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  * 제외 대상:
  *   - `_next/static`, `_next/image` : 빌드 산출물. 시크릿이 없고 미들웨어를 태우면 느려진다.
  *   - `monaco/` : self-host한 Monaco 에디터 정적 자산(public/monaco/vs). 공개 라이브러리라 시크릿이 없다.
+ *   - `pdfjs/`  : self-host한 pdf.js 워커·CMap·폰트(public/pdfjs). 역시 공개 라이브러리이며,
+ *     워커는 `new Worker()`로 로드되므로 리다이렉트가 끼면 PDF가 열리지 않는다.
  *   - `favicon.ico` / `*.svg|png|...` : public/ 정적 파일
  *   - `manifest.webmanifest`, `sw.js` : PWA 매니페스트와 서비스 워커. **정확한 경로만** 제외한다.
  *     iOS "홈 화면에 추가"와 서비스 워커 등록은 로그인 전에도 이 두 파일을 받아야 하고,
@@ -153,6 +155,6 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|monaco/|favicon.ico|manifest\\.webmanifest$|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|monaco/|pdfjs/|favicon.ico|manifest\\.webmanifest$|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2)$).*)',
   ],
 };

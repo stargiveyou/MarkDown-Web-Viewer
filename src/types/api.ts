@@ -19,8 +19,13 @@ export type SortKey = 'mtime' | 'name' | 'size' | 'ctime';
 /** 공유 대상 채널. 카카오는 채택하지 않음 (ADR-004). */
 export type ShareTarget = 'discord' | 'slack';
 
-/** GridView 카드 종류. */
-export type EntryType = 'folder' | 'markdown' | 'image' | 'other';
+/**
+ * GridView 카드 종류.
+ *
+ * `pdf`는 `other`에서 분리된 종류다 — 전용 뷰어(`/workspace/pdf`)로 열리고
+ * 카드 아이콘도 다르므로, 프론트가 확장자를 다시 들여다보지 않도록 서버가 구분해 준다.
+ */
+export type EntryType = 'folder' | 'markdown' | 'image' | 'pdf' | 'other';
 
 /**
  * 에러 응답 바디. 서버 내부 정보(스택트레이스·절대경로)를 절대 담지 않는다.

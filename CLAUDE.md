@@ -35,6 +35,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Tailwind v4** — v3와 달리 config 파일이 아니라 `src/app/globals.css`에서 `@plugin`으로 플러그인을 등록한다
 - Vitest 4 (테스트 러너)
 - `@monaco-editor/react` (편집), `react-markdown` + `remark-gfm` + `rehype-highlight` (렌더)
+- `pdfjs-dist` **legacy 빌드** (PDF 뷰어). 워커·CMap·폰트는 `scripts/copy-pdfjs.mjs`가 `public/pdfjs/`로 복사한다
+  (monaco와 같은 self-host 방식, gitignore 대상). legacy인 이유는 기본 빌드가 `Promise.try`를 폴리필 없이 쓰기 때문이다
 - `fs/promises` (직접 쓰기), `gray-matter` (frontmatter), `sharp` (썸네일), `better-sqlite3` (FTS5)
 - `lucide-react` (아이콘)
 
@@ -60,6 +62,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | PUT | `/api/file-content` | `{ path, content, baseMtime }` — mtime 불일치 시 **409** |
 | POST | `/api/upload` | multipart → `MARKDOWN_ROOT` 하위 저장 |
 | GET | `/api/thumbnail?path=&w=` | sharp 리사이즈 + 디스크 캐시 |
+| GET | `/api/pdf?path=` | PDF 원본을 `Content-Disposition: inline`으로 스트리밍. 뷰어가 바이트를 받아 pdf.js로 렌더한다 |
 | POST | `/api/share/notify` | `{ target: "discord"\|"slack", filePath }` |
 | GET/POST/DELETE | `/api/push/subscribe` | PWA 푸시 구독 조회·등록·해제. endpoint는 알려진 푸시 서비스 호스트만 허용(SSRF 방지) |
 | POST | `/api/push/test` | `{ endpoint }` — 그 기기에만 테스트 알림 |
@@ -89,6 +92,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 환경변수
 
 `MARKDOWN_ROOT`, `SESSION_PASSWORD`(해시), `SESSION_SECRET`, `UPLOAD_MAX_BYTES`, `ALLOWED_EXTENSIONS`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_SEC`, `DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(PWA 푸시, 셋 다 있거나 셋 다 없어야 함)
+
+`ALLOWED_EXTENSIONS`에 `pdf`가 없으면 PDF 업로드는 415다 — 뷰어를 추가해도 업로드 허용은 이 목록이 단독으로 정한다(불변식 3).
+PDF는 20MB를 쉽게 넘기므로 `UPLOAD_MAX_BYTES`도 함께 본다(바꾸면 `next.config.ts`가 연동 계산하므로 재빌드 필요).
 
 저장소 루트는 `MARKDOWN_ROOT`에서만 해석한다 — `path.join(os.homedir(), ...)` 같은 하드코딩 폴백을 두지 않는다.
 

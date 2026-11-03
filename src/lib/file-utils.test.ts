@@ -4,6 +4,7 @@ import {
   buildThumbnailUrl,
   classifyEntry,
   extractSnippet,
+  isPdf,
   isServableImage,
   isSvg,
   isThumbnailable,
@@ -37,6 +38,11 @@ describe('classifyEntry', () => {
     expect(classifyEntry('photo.Jpg', false)).toBe('image');
   });
 
+  it('returns "pdf" for .pdf files', () => {
+    expect(classifyEntry('report.pdf', false)).toBe('pdf');
+    expect(classifyEntry('REPORT.PDF', false)).toBe('pdf');
+  });
+
   it('returns "other" for unknown extensions', () => {
     expect(classifyEntry('data.csv', false)).toBe('other');
     expect(classifyEntry('archive.zip', false)).toBe('other');
@@ -44,6 +50,26 @@ describe('classifyEntry', () => {
 
   it('returns "other" for files without extension', () => {
     expect(classifyEntry('Makefile', false)).toBe('other');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isPdf
+// ---------------------------------------------------------------------------
+
+describe('isPdf', () => {
+  it('returns true for .pdf regardless of case', () => {
+    expect(isPdf('report.pdf')).toBe(true);
+    expect(isPdf('report.PDF')).toBe(true);
+    expect(isPdf('폴더/보고서.pdf')).toBe(true);
+  });
+
+  it('returns false for everything else', () => {
+    expect(isPdf('note.md')).toBe(false);
+    expect(isPdf('photo.png')).toBe(false);
+    // 확장자가 아니라 이름에 pdf가 들어간 경우는 PDF가 아니다.
+    expect(isPdf('pdf')).toBe(false);
+    expect(isPdf('report.pdf.md')).toBe(false);
   });
 });
 
