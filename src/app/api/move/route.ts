@@ -24,6 +24,7 @@ import {
   resolveUnderRoot,
   toSubpath,
 } from '@/lib/path-safety';
+import { moveDeleteLocks } from '@/lib/delete-lock';
 import { reindexAfterMove } from '@/lib/search-index';
 import type { MoveRequest, MoveResponse } from '@/types/api';
 
@@ -126,6 +127,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       await reindexAfterMove(oldSubpath, finalSubpath, isDirectory);
     } catch (indexError) {
       console.error('[move] search index update failed:', indexError);
+    }
+
+    // --- 10. 삭제 Lock 경로 갱신 (best-effort) ---
+    // 잠금은 경로를 키로 쓴다. 따라 옮기지 않으면 이동만으로 잠금이 풀린다.
+    try {
+      moveDeleteLocks(oldSubpath, finalSubpath, isDirectory);
+    } catch (lockError) {
+      console.error('[move] lock relocation failed:', lockError);
     }
 
     const response: MoveResponse = {

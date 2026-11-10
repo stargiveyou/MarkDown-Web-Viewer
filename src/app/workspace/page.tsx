@@ -34,6 +34,7 @@ import type {
   DeleteResponse,
   FileEntry,
   FilesResponse,
+  LockResponse,
   SearchResult,
   SortKey,
   TagCount,
@@ -194,7 +195,47 @@ function WorkspacePageInner() {
   }, []);
 
   const handleDeleteClick = useCallback((entry: FileEntry) => {
+    // 잠긴 항목은 버튼 자체가 비활성이지만, 확인 모달까지 열리지 않도록 한 번 더 막는다.
+    if (entry.locked) return;
     setDeleteTarget(entry);
+  }, []);
+
+  /**
+   * 삭제 Lock 토글.
+   *
+   * 낙관적으로 카드 상태를 먼저 바꾸고, 서버가 거부하면 원래 상태로 되돌린다
+   * (잠금이 걸리지 않았는데 걸린 것처럼 보이는 쪽이 더 위험하다).
+   */
+  const handleLockToggle = useCallback(async (entry: FileEntry) => {
+    const next = !entry.locked;
+
+    setEntries((prev) =>
+      prev.map((e) => (e.subpath === entry.subpath ? { ...e, locked: next } : e)),
+    );
+
+    try {
+      const res = await apiFetch<LockResponse>('/api/lock', {
+        method: 'POST',
+        body: JSON.stringify({ path: entry.subpath, locked: next }),
+      });
+      setEntries((prev) =>
+        prev.map((e) => (e.subpath === entry.subpath ? { ...e, locked: res.locked } : e)),
+      );
+      emitToast({
+        message: res.locked
+          ? `"${entry.name}" 삭제 Lock 설정`
+          : `"${entry.name}" 삭제 Lock 해제`,
+        variant: 'success',
+      });
+    } catch (caught) {
+      setEntries((prev) =>
+        prev.map((e) => (e.subpath === entry.subpath ? { ...e, locked: entry.locked } : e)),
+      );
+      const err = toApiRequestError(caught);
+      if (err.code !== 401) {
+        emitToast({ message: err.message, variant: 'error' });
+      }
+    }
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -469,6 +510,7 @@ function WorkspacePageInner() {
                   onFileClick={handleFileClick}
                   onMoveClick={handleMoveClick}
                   onDeleteClick={handleDeleteClick}
+                  onLockToggle={handleLockToggle}
                 />
               )}
             </>

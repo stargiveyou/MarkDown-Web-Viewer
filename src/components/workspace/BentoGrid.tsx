@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Folder, FileText, File, FileType, ChevronRight, History, Download, FolderInput, Trash2 } from 'lucide-react';
+import { Folder, FileText, File, FileType, ChevronRight, History, Download, FolderInput, Trash2, Lock, LockOpen } from 'lucide-react';
 import { apiFetch } from '@/lib/fetcher';
 import { FolderDownloadButton } from '@/components/workspace/FolderDownloadButton';
 import { NEW_WINDOW_LINK_PROPS, viewerHref } from '@/lib/viewer-nav';
@@ -21,6 +21,8 @@ export interface BentoGridProps {
   onFileClick: (entry: FileEntry) => void;
   onMoveClick?: (entry: FileEntry) => void;
   onDeleteClick?: (entry: FileEntry) => void;
+  /** 삭제 Lock 토글. 잠긴 항목은 삭제 버튼이 비활성화된다. */
+  onLockToggle?: (entry: FileEntry) => void;
 }
 
 /** 수정일을 상대 시간으로 표시 */
@@ -46,7 +48,83 @@ function formatSize(bytes: number): string {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
-export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick, onDeleteClick }: BentoGridProps) {
+/** 카드 우상단 액션 버튼 공통 스타일. 기본은 hover 시에만 드러난다. */
+const ACTION_BUTTON_BASE =
+  'flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border px-2 py-1 text-[11px] transition-opacity';
+
+/** hover 시에만 드러나는 중립 액션 버튼(이동·버전 등). */
+const ACTION_BUTTON_NEUTRAL =
+  'border-slate-700/50 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-700 hover:text-slate-200';
+
+/**
+ * 삭제 Lock 토글.
+ *
+ * 잠긴 상태에서는 hover 없이도 보이게 둔다 — 삭제 버튼이 왜 안 눌리는지
+ * 카드만 봐도 알 수 있어야 한다.
+ */
+function LockToggleButton({
+  entry,
+  onLockToggle,
+}: {
+  entry: FileEntry;
+  onLockToggle: (entry: FileEntry) => void;
+}) {
+  const locked = entry.locked === true;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onLockToggle(entry); }}
+      aria-pressed={locked}
+      aria-label={locked ? `${entry.name} 삭제 Lock 해제` : `${entry.name} 삭제 Lock 설정`}
+      title={locked ? '삭제 Lock 켜짐 — 클릭하면 해제됩니다' : '삭제 Lock — 켜면 삭제할 수 없습니다'}
+      className={`${ACTION_BUTTON_BASE} ${
+        locked
+          ? 'border-amber-500/60 text-amber-400 opacity-100 hover:bg-amber-500/20'
+          : ACTION_BUTTON_NEUTRAL
+      }`}
+    >
+      {locked ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
+    </button>
+  );
+}
+
+/** 삭제 버튼. 잠긴 항목에서는 눌리지 않는다(서버도 409로 거부한다). */
+function DeleteActionButton({
+  entry,
+  onDeleteClick,
+}: {
+  entry: FileEntry;
+  onDeleteClick: (entry: FileEntry) => void;
+}) {
+  const locked = entry.locked === true;
+
+  return (
+    <button
+      type="button"
+      disabled={locked}
+      onClick={(e) => { e.stopPropagation(); if (!locked) onDeleteClick(entry); }}
+      aria-label={`${entry.name} 삭제`}
+      title={locked ? '삭제 Lock이 걸려 있어 삭제할 수 없습니다' : '삭제'}
+      className={`${ACTION_BUTTON_BASE} border-red-800/50 ${
+        locked
+          ? 'cursor-not-allowed text-slate-600 opacity-100'
+          : 'text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-red-900/80 hover:text-red-300'
+      }`}
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  );
+}
+
+export function BentoGrid({
+  entries,
+  onFolderClick,
+  onFileClick,
+  onMoveClick,
+  onDeleteClick,
+  onLockToggle,
+}: BentoGridProps) {
   if (entries.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-slate-700 px-6 py-16 text-center">
@@ -66,13 +144,13 @@ export function BentoGrid({ entries, onFolderClick, onFileClick, onMoveClick, on
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {folders.map((entry, index) =>
         index === 0 ? (
-          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
+          <FeaturedFolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} onLockToggle={onLockToggle} />
         ) : (
-          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
+          <FolderCard key={entry.subpath} entry={entry} onClick={onFolderClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} onLockToggle={onLockToggle} />
         ),
       )}
       {files.map((entry) => (
-        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} />
+        <FileCard key={entry.subpath} entry={entry} onClick={onFileClick} onMoveClick={onMoveClick} onDeleteClick={onDeleteClick} onLockToggle={onLockToggle} />
       ))}
     </div>
   );
@@ -87,11 +165,13 @@ function FeaturedFolderCard({
   onClick,
   onMoveClick,
   onDeleteClick,
+  onLockToggle,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
   onMoveClick?: (entry: FileEntry) => void;
   onDeleteClick?: (entry: FileEntry) => void;
+  onLockToggle?: (entry: FileEntry) => void;
 }) {
   return (
     <div className="group relative lg:col-span-2 flex flex-col rounded-3xl bg-slate-800 border border-amber-500/30 shadow-lg text-left transition-all hover:border-amber-500/60 hover:shadow-amber-500/5">
@@ -146,29 +226,21 @@ function FeaturedFolderCard({
         </div>
       </button>
 
-      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제) */}
+      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제 Lock + 삭제) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
         <FolderDownloadButton subpath={entry.subpath} name={entry.name} />
         {onMoveClick && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            className={`${ACTION_BUTTON_BASE} ${ACTION_BUTTON_NEUTRAL}`}
             title="이동"
           >
             <FolderInput className="h-3 w-3" />
           </button>
         )}
-        {onDeleteClick && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
-            title="삭제"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
+        {onLockToggle && <LockToggleButton entry={entry} onLockToggle={onLockToggle} />}
+        {onDeleteClick && <DeleteActionButton entry={entry} onDeleteClick={onDeleteClick} />}
       </div>
     </div>
   );
@@ -183,11 +255,13 @@ function FolderCard({
   onClick,
   onMoveClick,
   onDeleteClick,
+  onLockToggle,
 }: {
   entry: FileEntry;
   onClick: (subpath: string) => void;
   onMoveClick?: (entry: FileEntry) => void;
   onDeleteClick?: (entry: FileEntry) => void;
+  onLockToggle?: (entry: FileEntry) => void;
 }) {
   return (
     <div className="group relative col-span-1 flex flex-col rounded-3xl bg-slate-800 border border-slate-700/80 text-left transition-all hover:border-slate-600 hover:shadow-md">
@@ -230,29 +304,21 @@ function FolderCard({
         )}
       </button>
 
-      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제) */}
+      {/* 액션 버튼 (ZIP 다운로드 + 이동 + 삭제 Lock + 삭제) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
         <FolderDownloadButton subpath={entry.subpath} name={entry.name} />
         {onMoveClick && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            className={`${ACTION_BUTTON_BASE} ${ACTION_BUTTON_NEUTRAL}`}
             title="이동"
           >
             <FolderInput className="h-3 w-3" />
           </button>
         )}
-        {onDeleteClick && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
-            title="삭제"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
+        {onLockToggle && <LockToggleButton entry={entry} onLockToggle={onLockToggle} />}
+        {onDeleteClick && <DeleteActionButton entry={entry} onDeleteClick={onDeleteClick} />}
       </div>
     </div>
   );
@@ -267,11 +333,13 @@ function FileCard({
   onClick,
   onMoveClick,
   onDeleteClick,
+  onLockToggle,
 }: {
   entry: FileEntry;
   onClick: (entry: FileEntry) => void;
   onMoveClick?: (entry: FileEntry) => void;
   onDeleteClick?: (entry: FileEntry) => void;
+  onLockToggle?: (entry: FileEntry) => void;
 }) {
   const isMarkdown = entry.type === 'markdown';
   const isPdf = entry.type === 'pdf';
@@ -385,32 +453,24 @@ function FileCard({
         </div>
       </button>
 
-      {/* 액션 버튼 (이동 + 삭제 + 버전 히스토리) */}
+      {/* 액션 버튼 (이동 + 삭제 Lock + 삭제 + 버전 히스토리) */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1" ref={dropdownRef}>
         {onMoveClick && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+            className={`${ACTION_BUTTON_BASE} ${ACTION_BUTTON_NEUTRAL}`}
             title="이동"
           >
             <FolderInput className="h-3 w-3" />
           </button>
         )}
-        {onDeleteClick && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onDeleteClick(entry); }}
-            className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-red-800/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 hover:text-red-300"
-            title="삭제"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
+        {onLockToggle && <LockToggleButton entry={entry} onLockToggle={onLockToggle} />}
+        {onDeleteClick && <DeleteActionButton entry={entry} onDeleteClick={onDeleteClick} />}
         <button
           type="button"
           onClick={handleVersionToggle}
-          className="flex items-center gap-1 rounded-lg bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 px-2 py-1 text-[11px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700 hover:text-slate-200"
+          className={`${ACTION_BUTTON_BASE} ${ACTION_BUTTON_NEUTRAL}`}
           title="이전 버전 보기"
         >
           <History className="h-3 w-3" />

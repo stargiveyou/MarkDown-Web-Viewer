@@ -101,6 +101,8 @@ export interface FileEntry {
   recentFiles?: { name: string; snippet?: string }[];
   /** 새 파일이거나 마지막 읽은 이후 업데이트된 파일이면 true. */
   unread?: boolean;
+  /** 삭제 Lock이 걸린 항목이면 true. 폴더·파일 모두에 걸 수 있다. */
+  locked?: boolean;
 }
 
 export interface FilesResponse {
@@ -372,6 +374,24 @@ export interface DeleteResponse {
   /** 삭제된 항목의 MARKDOWN_ROOT 기준 상대 경로. */
   subpath: string;
   name: string;
+}
+
+// ---------------------------------------------------------------------------
+// 삭제 Lock — POST /api/lock
+// ---------------------------------------------------------------------------
+
+export interface LockRequest {
+  /** 잠금을 걸거나 풀 항목의 MARKDOWN_ROOT 기준 상대 경로. */
+  path: string;
+  /** true면 잠금, false면 해제. */
+  locked: boolean;
+}
+
+export interface LockResponse {
+  ok: true;
+  subpath: string;
+  /** 요청 처리 후의 잠금 상태. 프론트는 이 값으로 카드 상태를 확정한다. */
+  locked: boolean;
 }
 
 // ---------------------------------------------------------------------------

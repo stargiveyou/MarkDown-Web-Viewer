@@ -31,6 +31,12 @@ import {
   resolveUnderRoot,
   toSubpath,
 } from '@/lib/path-safety';
+import {
+  findLockedDescendant,
+  getLockedSubpaths,
+  isDeleteLocked,
+  removeDeleteLocks,
+} from '@/lib/delete-lock';
 import { getUnreadSubpaths } from '@/lib/read-tracker';
 import { removeDirectoryFromIndex, removeFromIndex } from '@/lib/search-index';
 import type { DeleteResponse, FileEntry, FilesResponse, SortKey } from '@/types/api';
@@ -310,6 +316,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       }
     }
 
+    // --- 삭제 Lock 판정 (폴더·파일 모두) ---
+    const lockedSet = getLockedSubpaths(filteredEntries.map((e) => e.subpath));
+    for (const entry of filteredEntries) {
+      if (lockedSet.has(entry.subpath)) {
+        entry.locked = true;
+      }
+    }
+
     // --- breadcrumb 생성 ---
     const breadcrumb =
       userPath === '' || userPath === '.' || userPath === './'
@@ -356,6 +370,21 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     const name = path.basename(absolutePath);
     const subpath = toSubpath(absolutePath);
 
+    // --- 삭제 Lock 검사 (UI 비활성화와 무관하게 서버가 강제한다) ---
+    if (isDeleteLocked(subpath)) {
+      return apiError(409, `"${name}"에 삭제 Lock이 걸려 있습니다. 잠금을 해제한 뒤 삭제하세요.`);
+    }
+    if (isDirectory) {
+      // 폴더 삭제는 재귀 삭제다 — 하위에 잠긴 항목이 있으면 거부한다.
+      const blocker = findLockedDescendant(subpath);
+      if (blocker) {
+        return apiError(
+          409,
+          `하위 항목 "${path.posix.basename(blocker)}"에 삭제 Lock이 걸려 있어 폴더를 삭제할 수 없습니다.`,
+        );
+      }
+    }
+
     // --- 삭제 수행 ---
     if (isDirectory) {
       await fs.rm(absolutePath, { recursive: true, force: true });
@@ -375,6 +404,14 @@ export async function DELETE(request: Request): Promise<NextResponse> {
       } catch (indexError) {
         console.error('[files:delete] index cleanup failed:', indexError);
       }
+    }
+
+    // 잠금 기록 정리 (best-effort) — 같은 경로에 새 파일이 생겼을 때
+    // 과거 기록 때문에 잠긴 것처럼 보이지 않게 한다.
+    try {
+      removeDeleteLocks(subpath, isDirectory);
+    } catch (lockError) {
+      console.error('[files:delete] lock cleanup failed:', lockError);
     }
 
     const response: DeleteResponse = { ok: true, subpath, name };
